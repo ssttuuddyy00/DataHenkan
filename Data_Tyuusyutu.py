@@ -920,42 +920,102 @@ class ChartAnalyzerUI:
                 combo.current(0)
 
     def get_file_path(self, month, day, lower_time):
-        """選択された条件に基づいてファイルパスを決定"""
-        parts = []
+    """選択された条件に基づいてファイルパスを決定"""
+    parts = []
+    
+    # 月の判定
+    if month != "なし":
+        parts.append(self.timeframe_map["月"])
+    
+    # 日の判定
+    if day != "なし":
+        parts.append(self.timeframe_map["日"])
+    
+    # 下位時間の判定
+    if lower_time:
+        time_type = lower_time[0]  # ('セッション', value) のタプル
+        parts.append(self.timeframe_map[time_type])
+    
+    if not parts:
+        return None
+    
+    filename = "-".join(parts) + "_data.csv"
+    return os.path.join(self.data_dir, filename)
 
-        # 月の判定
-        if month != "なし":
-            parts.append(self.timeframe_map["月"])
+def load_chart_data(self, month, day, lower_time):
+    """選択条件に基づいてチャートデータを読み込む"""
+    file_path = self.get_file_path(month, day, lower_time)
+    
+    if not file_path or not os.path.exists(file_path):
+        # ファイルが見つからない場合は None を返す
+        return None
+    
+    try:
+        df = pd.read_csv(file_path)
+        return df
+    except Exception as e:
+        print(f"Error loading file: {e}")
+        return None
 
-        # 日の判定
-        if day != "なし":
-            parts.append(self.timeframe_map["日"])
-
-        # 下位時間の判定
-        if lower_time:
-            time_type = lower_time[0]  # ('セッション', value) のタプル
-            parts.append(self.timeframe_map[time_type])
-
-        if not parts:
-            return None
-
-        filename = "-".join(parts) + "_data.csv"
-        return os.path.join(self.data_dir, filename)
-
-    def load_chart_data(self, month, day, lower_time):
-        """選択条件に基づいてチャートデータを読み込む"""
-        file_path = self.get_file_path(month, day, lower_time)
-
-        if not file_path or not os.path.exists(file_path):
-            # ファイルが見つからない場合、より上位のファイルを探す
-            return None
-
-        try:
-            df = pd.read_csv(file_path)
-            return df
-        except Exception as e:
-            print(f"Error loading file: {e}")
-            return None
+def get_appropriate_data_file(self, target_month, target_day, target_lower, 
+                               cond_month, cond_day, cond_lower):
+    """対象と条件から適切なデータファイルを決定"""
+    # より詳細な時間足のファイルを優先的に読み込む
+    
+    # 時間足の優先順位（詳細 → 粗い）
+    time_priority = {
+        "M1": 8,
+        "M5": 7,
+        "M15": 6,
+        "M30": 5,
+        "H1": 4,
+        "H4": 3,
+        "セッション": 2,
+        "日": 1,
+        "月": 0
+    }
+    
+    # 対象と条件の時間足を取得
+    target_time = target_lower[0] if target_lower else None
+    cond_time = cond_lower[0] if cond_lower else None
+    
+    # より詳細な方を選択
+    selected_time = None
+    if target_time and cond_time:
+        if time_priority.get(target_time, -1) > time_priority.get(cond_time, -1):
+            selected_time = target_lower
+        else:
+            selected_time = cond_lower
+    elif target_time:
+        selected_time = target_lower
+    elif cond_time:
+        selected_time = cond_lower
+    
+    # 月・日の判定（対象と条件の両方を考慮）
+    selected_month = "なし"
+    selected_day = "なし"
+    
+    if target_month != "なし" or cond_month != "なし":
+        # どちらかが指定されていれば、より具体的な方を使用
+        if target_month != "なし" and target_month not in ["全て", "個別全て"]:
+            selected_month = target_month
+        elif cond_month != "なし" and cond_month not in ["全て", "個別全て"]:
+            selected_month = cond_month
+        elif target_month in ["全て", "個別全て"] or cond_month in ["全て", "個別全て"]:
+            selected_month = "全て"  # 全て or 個別全ての場合は全てとして扱う
+    
+    if target_day != "なし" or cond_day != "なし":
+        if target_day != "なし" and target_day not in ["全て", "個別全て"]:
+            selected_day = target_day
+        elif cond_day != "なし" and cond_day not in ["全て", "個別全て"]:
+            selected_day = cond_day
+        elif target_day in ["全て", "個別全て"] or cond_day in ["全て", "個別全て"]:
+            selected_day = "全て"
+    
+    # ファイルパスを決定
+    file_path = self.get_file_path(selected_month, selected_day, selected_time)
+    
+    return file_path, selected_month, selected_day, selected_time
 
     def get_selected_lower_time(self, category):
         """選択された下位時間フィルタを取得"""
@@ -1238,61 +1298,83 @@ class ChartAnalyzerUI:
     def analyze_single_condition(self, target_month, target_day, target_lower,
                              cond_month, cond_day, cond_lower, cond_candle,
                              cond_individual_all):
-        """単一条件での分析を実行"""
-        # データを読み込む
-        df = self.load_chart_data(target_month, target_day, target_lower)
-        
-        if df is None:
-            self.result_text.insert(tk.END, f"データファイルが見つかりません。\n")
-            self.result_text.insert(tk.END, f"予想ファイル名: {self.get_file_path(target_month, target_day, target_lower)}\n\n")
-            return
-        
-        self.result_text.insert(tk.END, f"読み込んだデータ: {len(df)}行\n")
-        
-        # 連続条件を取得
-        cond_consecutive = self.cond_consecutive.get()
-        cond_consecutive_type = self.cond_consecutive_type.get()
-        
-        # 条件2を取得
-        cond2_consecutive = self.cond2_consecutive.get()
-        cond2_consecutive_type = self.cond2_consecutive_type.get()
-        cond2_month = self.cond2_month.get()
-        cond2_day = self.cond2_day.get()
-        cond2_lower = self.get_selected_lower_time('cond2')
-        cond2_candle = self.cond2_candle.get()
-        
-        # ★★★ 個別全ての抽出項目を記録する変数を初期化 ★★★
-        if not hasattr(self, 'current_extracted_items'):
-            self.current_extracted_items = []
-        else:
-            self.current_extracted_items.clear()
-        
-        # 条件個別全ての処理
-        if cond_individual_all:
-            filter_type, values = cond_individual_all
-            for value in values:
-                self.result_text.insert(tk.END, f"\n--- 条件: {value} ---\n")
-                
-                # ★★★ 抽出項目を記録 ★★★
-                self.current_extracted_items.append(value)
-                
-                temp_cond_month = value if filter_type == "月" else cond_month
-                temp_cond_day = value if filter_type == "日" else cond_day
-                temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
-                temp_cond_candle = value if filter_type == "陽線・陰線" else cond_candle
-                
-                self.process_with_condition(df, target_month, target_day, target_lower,
-                                        temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
-                                        cond_consecutive, cond_consecutive_type,
-                                        cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
-                                        cond2_lower, cond2_candle)
-        else:
-            # 通常処理
+    """単一条件での分析を実行"""
+    # ★★★ 適切なデータファイルを決定 ★★★
+    cond2_month = self.cond2_month.get()
+    cond2_day = self.cond2_day.get()
+    cond2_lower = self.get_selected_lower_time('cond2')
+    
+    # 対象、条件1、条件2の中で最も詳細な時間足のファイルを読み込む
+    file_path, selected_month, selected_day, selected_time = self.get_appropriate_data_file(
+        target_month, target_day, target_lower,
+        cond_month, cond_day, cond_lower
+    )
+    
+    # 条件2も考慮
+    if cond2_lower:
+        file_path2, _, _, _ = self.get_appropriate_data_file(
+            selected_month, selected_day, selected_time,
+            cond2_month, cond2_day, cond2_lower
+        )
+        if file_path2:
+            file_path = file_path2
+    
+    # データを読み込む
+    if not file_path or not os.path.exists(file_path):
+        self.result_text.insert(tk.END, f"データファイルが見つかりません。\n")
+        self.result_text.insert(tk.END, f"予想ファイル名: {file_path}\n\n")
+        return
+    
+    try:
+        df = pd.read_csv(file_path)
+    except Exception as e:
+        self.result_text.insert(tk.END, f"データ読み込みエラー: {e}\n\n")
+        return
+    
+    self.result_text.insert(tk.END, f"読み込んだデータ: {len(df)}行 (ファイル: {os.path.basename(file_path)})\n")
+    
+    # 連続条件を取得
+    cond_consecutive = self.cond_consecutive.get()
+    cond_consecutive_type = self.cond_consecutive_type.get()
+    
+    # 条件2を取得
+    cond2_consecutive = self.cond2_consecutive.get()
+    cond2_consecutive_type = self.cond2_consecutive_type.get()
+    cond2_candle = self.cond2_candle.get()
+    
+    # 個別全ての抽出項目を記録する変数を初期化
+    if not hasattr(self, 'current_extracted_items'):
+        self.current_extracted_items = []
+    else:
+        self.current_extracted_items.clear()
+    
+    # 条件個別全ての処理
+    if cond_individual_all:
+        filter_type, values = cond_individual_all
+        for value in values:
+            self.result_text.insert(tk.END, f"\n--- 条件: {value} ---\n")
+            
+            # 抽出項目を記録
+            self.current_extracted_items.append(value)
+            
+            temp_cond_month = value if filter_type == "月" else cond_month
+            temp_cond_day = value if filter_type == "日" else cond_day
+            temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
+            temp_cond_candle = value if filter_type == "陽線・陰線" else cond_candle
+            
             self.process_with_condition(df, target_month, target_day, target_lower,
-                                    cond_month, cond_day, cond_lower, cond_candle,
-                                    cond_consecutive, cond_consecutive_type,
-                                    cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
-                                    cond2_lower, cond2_candle)
+                                      temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
+                                      cond_consecutive, cond_consecutive_type,
+                                      cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
+                                      cond2_lower, cond2_candle)
+    else:
+        # 通常処理
+        self.process_with_condition(df, target_month, target_day, target_lower,
+                                  cond_month, cond_day, cond_lower, cond_candle,
+                                  cond_consecutive, cond_consecutive_type,
+                                  cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
+                                  cond2_lower, cond2_candle)
+                                  
 
     def process_with_condition(
         self, df, target_month, target_day, target_lower,
