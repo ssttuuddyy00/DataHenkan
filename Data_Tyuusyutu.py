@@ -1299,39 +1299,60 @@ class ChartAnalyzerUI:
                              cond_month, cond_day, cond_lower, cond_candle,
                              cond_individual_all):
     """単一条件での分析を実行"""
-    # ★★★ 適切なデータファイルを決定 ★★★
+    
+    # 条件2を取得
     cond2_month = self.cond2_month.get()
     cond2_day = self.cond2_day.get()
     cond2_lower = self.get_selected_lower_time('cond2')
     
-    # 対象、条件1、条件2の中で最も詳細な時間足のファイルを読み込む
-    file_path, selected_month, selected_day, selected_time = self.get_appropriate_data_file(
-        target_month, target_day, target_lower,
-        cond_month, cond_day, cond_lower
-    )
+    # ★★★ 対象用のデータファイルを読み込む ★★★
+    target_file_path = self.get_file_path(target_month, target_day, target_lower)
     
-    # 条件2も考慮
-    if cond2_lower:
-        file_path2, _, _, _ = self.get_appropriate_data_file(
-            selected_month, selected_day, selected_time,
-            cond2_month, cond2_day, cond2_lower
-        )
-        if file_path2:
-            file_path = file_path2
-    
-    # データを読み込む
-    if not file_path or not os.path.exists(file_path):
-        self.result_text.insert(tk.END, f"データファイルが見つかりません。\n")
-        self.result_text.insert(tk.END, f"予想ファイル名: {file_path}\n\n")
+    if not target_file_path or not os.path.exists(target_file_path):
+        self.result_text.insert(tk.END, f"対象データファイルが見つかりません。\n")
+        self.result_text.insert(tk.END, f"予想ファイル名: {target_file_path}\n\n")
         return
     
     try:
-        df = pd.read_csv(file_path)
+        target_df = pd.read_csv(target_file_path)
+        self.result_text.insert(tk.END, f"対象データ読み込み: {len(target_df)}行 (ファイル: {os.path.basename(target_file_path)})\n")
     except Exception as e:
-        self.result_text.insert(tk.END, f"データ読み込みエラー: {e}\n\n")
+        self.result_text.insert(tk.END, f"対象データ読み込みエラー: {e}\n\n")
         return
     
-    self.result_text.insert(tk.END, f"読み込んだデータ: {len(df)}行 (ファイル: {os.path.basename(file_path)})\n")
+    # ★★★ 条件1用のデータファイルを読み込む（条件が指定されている場合） ★★★
+    cond_df = None
+    if cond_month != "なし" or cond_day != "なし" or cond_lower:
+        cond_file_path = self.get_file_path(cond_month, cond_day, cond_lower)
+        
+        if cond_file_path and os.path.exists(cond_file_path):
+            try:
+                cond_df = pd.read_csv(cond_file_path)
+                self.result_text.insert(tk.END, f"条件1データ読み込み: {len(cond_df)}行 (ファイル: {os.path.basename(cond_file_path)})\n")
+            except Exception as e:
+                self.result_text.insert(tk.END, f"条件1データ読み込みエラー: {e}\n\n")
+                return
+        else:
+            self.result_text.insert(tk.END, f"条件1データファイルが見つかりません。\n")
+            self.result_text.insert(tk.END, f"予想ファイル名: {cond_file_path}\n\n")
+            return
+    
+    # ★★★ 条件2用のデータファイルを読み込む（条件2が指定されている場合） ★★★
+    cond2_df = None
+    if cond2_month != "なし" or cond2_day != "なし" or cond2_lower:
+        cond2_file_path = self.get_file_path(cond2_month, cond2_day, cond2_lower)
+        
+        if cond2_file_path and os.path.exists(cond2_file_path):
+            try:
+                cond2_df = pd.read_csv(cond2_file_path)
+                self.result_text.insert(tk.END, f"条件2データ読み込み: {len(cond2_df)}行 (ファイル: {os.path.basename(cond2_file_path)})\n")
+            except Exception as e:
+                self.result_text.insert(tk.END, f"条件2データ読み込みエラー: {e}\n\n")
+                return
+        else:
+            self.result_text.insert(tk.END, f"条件2データファイルが見つかりません。\n")
+            self.result_text.insert(tk.END, f"予想ファイル名: {cond2_file_path}\n\n")
+            return
     
     # 連続条件を取得
     cond_consecutive = self.cond_consecutive.get()
@@ -1362,19 +1383,207 @@ class ChartAnalyzerUI:
             temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
             temp_cond_candle = value if filter_type == "陽線・陰線" else cond_candle
             
-            self.process_with_condition(df, target_month, target_day, target_lower,
-                                      temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
-                                      cond_consecutive, cond_consecutive_type,
-                                      cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
-                                      cond2_lower, cond2_candle)
+            self.process_with_separate_conditions(target_df, cond_df, cond2_df,
+                                                  target_month, target_day, target_lower,
+                                                  temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
+                                                  cond_consecutive, cond_consecutive_type,
+                                                  cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
+                                                  cond2_lower, cond2_candle)
     else:
         # 通常処理
-        self.process_with_condition(df, target_month, target_day, target_lower,
-                                  cond_month, cond_day, cond_lower, cond_candle,
-                                  cond_consecutive, cond_consecutive_type,
-                                  cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
-                                  cond2_lower, cond2_candle)
-                                  
+        self.process_with_separate_conditions(target_df, cond_df, cond2_df,
+                                              target_month, target_day, target_lower,
+                                              cond_month, cond_day, cond_lower, cond_candle,
+                                              cond_consecutive, cond_consecutive_type,
+                                              cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
+                                              cond2_lower, cond2_candle)
+        
+    def process_with_separate_conditions(self, target_df, cond_df, cond2_df,
+                                     target_month, target_day, target_lower,
+                                     cond_month, cond_day, cond_lower, cond_candle,
+                                     cond_consecutive, cond_consecutive_type,
+                                     cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day,
+                                     cond2_lower, cond2_candle):
+        """条件と対象を別々のデータファイルから処理"""
+        
+        # ★★★ 条件2の処理 ★★★
+        filtered_cond2_dates = None
+        if cond2_df is not None:
+            # 条件2の連続条件を適用
+            if cond2_consecutive != "なし":
+                consecutive_num = int(cond2_consecutive)
+                is_bullish = (cond2_consecutive_type == "陽線")
+                
+                valid_indices = []
+                for i in range(consecutive_num, len(cond2_df)):
+                    past_candles = cond2_df.iloc[i-consecutive_num:i]
+                    if is_bullish:
+                        if all(past_candles['Close'] > past_candles['Open']):
+                            valid_indices.append(i)
+                    else:
+                        if all(past_candles['Close'] < past_candles['Open']):
+                            valid_indices.append(i)
+                
+                if not valid_indices:
+                    self.result_text.insert(tk.END, f"条件2の連続条件（過去{consecutive_num}本{cond2_consecutive_type}）に合致するデータがありません。\n\n")
+                    return
+                
+                cond2_df = cond2_df.iloc[valid_indices].reset_index(drop=True)
+                self.result_text.insert(tk.END, f"条件2の連続条件に合致: {len(cond2_df)}行\n")
+            
+            # 条件2のフィルタを適用
+            condition2_filtered = self.filter_data(cond2_df, cond2_month, cond2_day, cond2_lower, cond2_candle)
+            
+            if condition2_filtered.empty:
+                self.result_text.insert(tk.END, "条件2に合致するデータがありません。\n\n")
+                return
+            
+            self.result_text.insert(tk.END, f"条件2に合致: {len(condition2_filtered)}行\n")
+            
+            # 条件2の日時情報を保存（次の足を探すため）
+            filtered_cond2_dates = self.extract_datetime_info(condition2_filtered)
+        
+        # ★★★ 条件1の処理 ★★★
+        filtered_cond_dates = None
+        if cond_df is not None:
+            # 条件2がある場合、条件2の次の足に該当する条件1のデータを探す
+            if filtered_cond2_dates is not None:
+                cond_df = self.filter_by_next_candle(cond_df, filtered_cond2_dates)
+                if cond_df.empty:
+                    self.result_text.insert(tk.END, "条件2の次の足（条件1対象）が見つかりません。\n\n")
+                    return
+                self.result_text.insert(tk.END, f"条件2の次の足: {len(cond_df)}行\n")
+            
+            # 条件1の連続条件を適用
+            if cond_consecutive != "なし":
+                consecutive_num = int(cond_consecutive)
+                is_bullish = (cond_consecutive_type == "陽線")
+                
+                valid_indices = []
+                for i in range(consecutive_num, len(cond_df)):
+                    past_candles = cond_df.iloc[i-consecutive_num:i]
+                    if is_bullish:
+                        if all(past_candles['Close'] > past_candles['Open']):
+                            valid_indices.append(i)
+                    else:
+                        if all(past_candles['Close'] < past_candles['Open']):
+                            valid_indices.append(i)
+                
+                if not valid_indices:
+                    self.result_text.insert(tk.END, f"条件1の連続条件（過去{consecutive_num}本{cond_consecutive_type}）に合致するデータがありません。\n\n")
+                    return
+                
+                cond_df = cond_df.iloc[valid_indices].reset_index(drop=True)
+                self.result_text.insert(tk.END, f"条件1の連続条件に合致: {len(cond_df)}行\n")
+            
+            # 条件1のフィルタを適用
+            condition_filtered = self.filter_data(cond_df, cond_month, cond_day, cond_lower, cond_candle)
+            
+            if condition_filtered.empty:
+                self.result_text.insert(tk.END, "条件1に合致するデータがありません。\n\n")
+                return
+            
+            self.result_text.insert(tk.END, f"条件1に合致: {len(condition_filtered)}行\n")
+            
+            # 条件1の日時情報を保存（次の足を探すため）
+            filtered_cond_dates = self.extract_datetime_info(condition_filtered)
+        
+        # ★★★ 対象の処理 ★★★
+        # 条件1がある場合、条件1の次の足に該当する対象のデータを探す
+        if filtered_cond_dates is not None:
+            result_df = self.filter_by_next_candle(target_df, filtered_cond_dates)
+            if result_df.empty:
+                self.result_text.insert(tk.END, "条件1の次の足（対象）が見つかりません。\n\n")
+                return
+            self.result_text.insert(tk.END, f"条件1の次の足: {len(result_df)}行\n")
+        elif filtered_cond2_dates is not None:
+            # 条件1がなく条件2だけある場合
+            result_df = self.filter_by_next_candle(target_df, filtered_cond2_dates)
+            if result_df.empty:
+                self.result_text.insert(tk.END, "条件2の次の足（対象）が見つかりません。\n\n")
+                return
+            self.result_text.insert(tk.END, f"条件2の次の足: {len(result_df)}行\n")
+        else:
+            # 条件がない場合は対象データをそのまま使用
+            result_df = target_df
+        
+        # 対象フィルタを適用
+        result_df = self.filter_data(result_df, target_month, target_day, target_lower, "なし")
+        
+        if result_df.empty:
+            self.result_text.insert(tk.END, "フィルタ後の対象データが見つかりません。\n\n")
+            return
+        
+        self.result_text.insert(tk.END, f"最終対象データ: {len(result_df)}行\n")
+        self.result_text.insert(tk.END, "-" * 50 + "\n")
+        
+        # 抽出内容に応じて分析
+        extract_type = self.extract_type.get()
+        
+        if extract_type == "陽線確率":
+            self.analyze_bullish_probability(result_df)
+        else:
+            extract_detail = self.extract_detail.get()
+            self.analyze_width(result_df, extract_detail)
+        
+        self.result_text.insert(tk.END, "\n")
+    
+    def extract_datetime_info(self, df):
+        """DataFrameから日時情報を抽出"""
+        datetime_info = []
+        
+        for _, row in df.iterrows():
+            info = {}
+            if 'Year' in df.columns:
+                info['Year'] = row['Year']
+            if 'Month' in df.columns:
+                info['Month'] = row['Month']
+            if 'Day' in df.columns:
+                info['Day'] = row['Day']
+            if 'TimeRange' in df.columns:
+                info['TimeRange'] = row['TimeRange']
+            if 'Session' in df.columns:
+                info['Session'] = row['Session']
+            
+            datetime_info.append(info)
+        
+        return datetime_info
+
+    def filter_by_next_candle(self, df, prev_datetime_info):
+        """前の足の日時情報に基づいて次の足を抽出"""
+        result_rows = []
+        
+        for prev_info in prev_datetime_info:
+            # 同じ日付のデータを絞り込み
+            filtered = df.copy()
+            
+            if 'Year' in prev_info and 'Year' in df.columns:
+                filtered = filtered[filtered['Year'] == prev_info['Year']]
+            if 'Month' in prev_info and 'Month' in df.columns:
+                filtered = filtered[filtered['Month'] == prev_info['Month']]
+            if 'Day' in prev_info and 'Day' in df.columns:
+                filtered = filtered[filtered['Day'] == prev_info['Day']]
+            
+            # TimeRangeがある場合、前の足の終了時刻以降を探す
+            if 'TimeRange' in prev_info and 'TimeRange' in df.columns:
+                prev_end_time = prev_info['TimeRange'].split('-')[1]
+                
+                for _, row in filtered.iterrows():
+                    curr_start_time = row['TimeRange'].split('-')[0]
+                    
+                    # 前の足の終了時刻以降の最初の足を取得
+                    if curr_start_time >= prev_end_time:
+                        result_rows.append(row)
+                        break
+            else:
+                # TimeRangeがない場合は、フィルタ後の最初の行を取得
+                if not filtered.empty:
+                    result_rows.append(filtered.iloc[0])
+        
+        if result_rows:
+            return pd.DataFrame(result_rows).reset_index(drop=True)
+        else:
+            return pd.DataFrame()
 
     def process_with_condition(self, df, target_month, target_day, target_lower,
                           cond_month, cond_day, cond_lower, cond_candle,
