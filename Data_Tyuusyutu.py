@@ -1298,105 +1298,105 @@ class ChartAnalyzerUI:
     def analyze_single_condition(self, target_month, target_day, target_lower,
                              cond_month, cond_day, cond_lower, cond_candle,
                              cond_individual_all):
-    """単一条件での分析を実行"""
-    
-    # 条件2を取得
-    cond2_month = self.cond2_month.get()
-    cond2_day = self.cond2_day.get()
-    cond2_lower = self.get_selected_lower_time('cond2')
-    
-    # ★★★ 対象用のデータファイルを読み込む ★★★
-    target_file_path = self.get_file_path(target_month, target_day, target_lower)
-    
-    if not target_file_path or not os.path.exists(target_file_path):
-        self.result_text.insert(tk.END, f"対象データファイルが見つかりません。\n")
-        self.result_text.insert(tk.END, f"予想ファイル名: {target_file_path}\n\n")
-        return
-    
-    try:
-        target_df = pd.read_csv(target_file_path)
-        self.result_text.insert(tk.END, f"対象データ読み込み: {len(target_df)}行 (ファイル: {os.path.basename(target_file_path)})\n")
-    except Exception as e:
-        self.result_text.insert(tk.END, f"対象データ読み込みエラー: {e}\n\n")
-        return
-    
-    # ★★★ 条件1用のデータファイルを読み込む（条件が指定されている場合） ★★★
-    cond_df = None
-    if cond_month != "なし" or cond_day != "なし" or cond_lower:
-        cond_file_path = self.get_file_path(cond_month, cond_day, cond_lower)
+        """単一条件での分析を実行"""
         
-        if cond_file_path and os.path.exists(cond_file_path):
-            try:
-                cond_df = pd.read_csv(cond_file_path)
-                self.result_text.insert(tk.END, f"条件1データ読み込み: {len(cond_df)}行 (ファイル: {os.path.basename(cond_file_path)})\n")
-            except Exception as e:
-                self.result_text.insert(tk.END, f"条件1データ読み込みエラー: {e}\n\n")
-                return
-        else:
-            self.result_text.insert(tk.END, f"条件1データファイルが見つかりません。\n")
-            self.result_text.insert(tk.END, f"予想ファイル名: {cond_file_path}\n\n")
-            return
-    
-    # ★★★ 条件2用のデータファイルを読み込む（条件2が指定されている場合） ★★★
-    cond2_df = None
-    if cond2_month != "なし" or cond2_day != "なし" or cond2_lower:
-        cond2_file_path = self.get_file_path(cond2_month, cond2_day, cond2_lower)
+        # 条件2を取得
+        cond2_month = self.cond2_month.get()
+        cond2_day = self.cond2_day.get()
+        cond2_lower = self.get_selected_lower_time('cond2')
         
-        if cond2_file_path and os.path.exists(cond2_file_path):
-            try:
-                cond2_df = pd.read_csv(cond2_file_path)
-                self.result_text.insert(tk.END, f"条件2データ読み込み: {len(cond2_df)}行 (ファイル: {os.path.basename(cond2_file_path)})\n")
-            except Exception as e:
-                self.result_text.insert(tk.END, f"条件2データ読み込みエラー: {e}\n\n")
-                return
-        else:
-            self.result_text.insert(tk.END, f"条件2データファイルが見つかりません。\n")
-            self.result_text.insert(tk.END, f"予想ファイル名: {cond2_file_path}\n\n")
+        # ★★★ 対象用のデータファイルを読み込む ★★★
+        target_file_path = self.get_file_path(target_month, target_day, target_lower)
+        
+        if not target_file_path or not os.path.exists(target_file_path):
+            self.result_text.insert(tk.END, f"対象データファイルが見つかりません。\n")
+            self.result_text.insert(tk.END, f"予想ファイル名: {target_file_path}\n\n")
             return
-    
-    # 連続条件を取得
-    cond_consecutive = self.cond_consecutive.get()
-    cond_consecutive_type = self.cond_consecutive_type.get()
-    
-    # 条件2を取得
-    cond2_consecutive = self.cond2_consecutive.get()
-    cond2_consecutive_type = self.cond2_consecutive_type.get()
-    cond2_candle = self.cond2_candle.get()
-    
-    # 個別全ての抽出項目を記録する変数を初期化
-    if not hasattr(self, 'current_extracted_items'):
-        self.current_extracted_items = []
-    else:
-        self.current_extracted_items.clear()
-    
-    # 条件個別全ての処理
-    if cond_individual_all:
-        filter_type, values = cond_individual_all
-        for value in values:
-            self.result_text.insert(tk.END, f"\n--- 条件: {value} ---\n")
+        
+        try:
+            target_df = pd.read_csv(target_file_path)
+            self.result_text.insert(tk.END, f"対象データ読み込み: {len(target_df)}行 (ファイル: {os.path.basename(target_file_path)})\n")
+        except Exception as e:
+            self.result_text.insert(tk.END, f"対象データ読み込みエラー: {e}\n\n")
+            return
+        
+        # ★★★ 条件1用のデータファイルを読み込む（条件が指定されている場合） ★★★
+        cond_df = None
+        if cond_month != "なし" or cond_day != "なし" or cond_lower:
+            cond_file_path = self.get_file_path(cond_month, cond_day, cond_lower)
             
-            # 抽出項目を記録
-            self.current_extracted_items.append(value)
+            if cond_file_path and os.path.exists(cond_file_path):
+                try:
+                    cond_df = pd.read_csv(cond_file_path)
+                    self.result_text.insert(tk.END, f"条件1データ読み込み: {len(cond_df)}行 (ファイル: {os.path.basename(cond_file_path)})\n")
+                except Exception as e:
+                    self.result_text.insert(tk.END, f"条件1データ読み込みエラー: {e}\n\n")
+                    return
+            else:
+                self.result_text.insert(tk.END, f"条件1データファイルが見つかりません。\n")
+                self.result_text.insert(tk.END, f"予想ファイル名: {cond_file_path}\n\n")
+                return
+        
+        # ★★★ 条件2用のデータファイルを読み込む（条件2が指定されている場合） ★★★
+        cond2_df = None
+        if cond2_month != "なし" or cond2_day != "なし" or cond2_lower:
+            cond2_file_path = self.get_file_path(cond2_month, cond2_day, cond2_lower)
             
-            temp_cond_month = value if filter_type == "月" else cond_month
-            temp_cond_day = value if filter_type == "日" else cond_day
-            temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
-            temp_cond_candle = value if filter_type == "陽線・陰線" else cond_candle
-            
+            if cond2_file_path and os.path.exists(cond2_file_path):
+                try:
+                    cond2_df = pd.read_csv(cond2_file_path)
+                    self.result_text.insert(tk.END, f"条件2データ読み込み: {len(cond2_df)}行 (ファイル: {os.path.basename(cond2_file_path)})\n")
+                except Exception as e:
+                    self.result_text.insert(tk.END, f"条件2データ読み込みエラー: {e}\n\n")
+                    return
+            else:
+                self.result_text.insert(tk.END, f"条件2データファイルが見つかりません。\n")
+                self.result_text.insert(tk.END, f"予想ファイル名: {cond2_file_path}\n\n")
+                return
+        
+        # 連続条件を取得
+        cond_consecutive = self.cond_consecutive.get()
+        cond_consecutive_type = self.cond_consecutive_type.get()
+        
+        # 条件2を取得
+        cond2_consecutive = self.cond2_consecutive.get()
+        cond2_consecutive_type = self.cond2_consecutive_type.get()
+        cond2_candle = self.cond2_candle.get()
+        
+        # 個別全ての抽出項目を記録する変数を初期化
+        if not hasattr(self, 'current_extracted_items'):
+            self.current_extracted_items = []
+        else:
+            self.current_extracted_items.clear()
+        
+        # 条件個別全ての処理
+        if cond_individual_all:
+            filter_type, values = cond_individual_all
+            for value in values:
+                self.result_text.insert(tk.END, f"\n--- 条件: {value} ---\n")
+                
+                # 抽出項目を記録
+                self.current_extracted_items.append(value)
+                
+                temp_cond_month = value if filter_type == "月" else cond_month
+                temp_cond_day = value if filter_type == "日" else cond_day
+                temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
+                temp_cond_candle = value if filter_type == "陽線・陰線" else cond_candle
+                
+                self.process_with_separate_conditions(target_df, cond_df, cond2_df,
+                                                    target_month, target_day, target_lower,
+                                                    temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
+                                                    cond_consecutive, cond_consecutive_type,
+                                                    cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
+                                                    cond2_lower, cond2_candle)
+        else:
+            # 通常処理
             self.process_with_separate_conditions(target_df, cond_df, cond2_df,
-                                                  target_month, target_day, target_lower,
-                                                  temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
-                                                  cond_consecutive, cond_consecutive_type,
-                                                  cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
-                                                  cond2_lower, cond2_candle)
-    else:
-        # 通常処理
-        self.process_with_separate_conditions(target_df, cond_df, cond2_df,
-                                              target_month, target_day, target_lower,
-                                              cond_month, cond_day, cond_lower, cond_candle,
-                                              cond_consecutive, cond_consecutive_type,
-                                              cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
-                                              cond2_lower, cond2_candle)
+                                                target_month, target_day, target_lower,
+                                                cond_month, cond_day, cond_lower, cond_candle,
+                                                cond_consecutive, cond_consecutive_type,
+                                                cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
+                                                cond2_lower, cond2_candle)
         
     def process_with_separate_conditions(self, target_df, cond_df, cond2_df,
                                      target_month, target_day, target_lower,
