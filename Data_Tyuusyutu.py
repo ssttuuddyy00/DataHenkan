@@ -1206,50 +1206,8 @@ class ChartAnalyzerUI:
             self.result_text.insert(tk.END, "カテゴリ2で対象を選択してください。\n")
             return
         
-        # ★★★ 個別時間範囲のチェック ★★★
-        target_individual_timeframe = None
-        if target_lower:
-            time_type, time_value = target_lower
-            parsed = self.parse_individual_timeframe(time_value)
-            if parsed:
-                target_individual_timeframe = (time_type, parsed[0], parsed[1])
-                # 個別時間範囲内のすべての子時間足を取得
-                sub_timeframes = self.get_sub_timeframes_in_range(parsed[0], parsed[1], time_type)
-                
-                self.result_text.insert(tk.END, f"個別時間範囲: {parsed[0]} {parsed[1]} 内の {time_type}\n")
-                self.result_text.insert(tk.END, f"抽出対象: {len(sub_timeframes)}個\n")
-                self.result_text.insert(tk.END, "="*60 + "\n")
-                
-                # 個別全てと同様の処理
-                if not hasattr(self, 'current_extracted_items'):
-                    self.current_extracted_items = []
-                else:
-                    self.current_extracted_items.clear()
-                
-                for sub_time in sub_timeframes:
-                    self.result_text.insert(tk.END, f"\n【対象: {time_type} {sub_time}】\n")
-                    self.result_text.insert(tk.END, "="*60 + "\n")
-                    
-                    self.current_extracted_items.append(sub_time)
-                    
-                    # 一時的に値を設定
-                    temp_lower = (time_type, sub_time)
-                    
-                    cond_month = self.cond_month.get()
-                    cond_day = self.cond_day.get()
-                    cond_lower = self.get_selected_lower_time('cond')
-                    cond_candle = self.cond_candle.get()
-                    
-                    self.analyze_single_condition(target_month, target_day, temp_lower,
-                                                cond_month, cond_day, cond_lower, cond_candle,
-                                                None)
-                
-                # 履歴に追加
-                self.add_to_history()
-                return
-        
-        # 分析情報を保存
-        self.current_analysis_info = {
+        # ★★★ 分析情報を先に構築（既存ファイル検索用） ★★★
+        info = {
             'target_month': target_month,
             'target_day': target_day,
             'target_lower': target_lower,
@@ -1268,8 +1226,152 @@ class ChartAnalyzerUI:
             'extract_type': self.extract_type.get(),
             'extract_detail': self.extract_detail.get()
         }
+        self.current_analysis_info = info
         
-        # 個別全ての処理
+        # ★★★ 既存ファイルを検索 ★★★
+        target_parts = []
+        if info['target_month'] != "なし":
+            target_parts.append(f"月:{info['target_month']}")
+        if info['target_day'] != "なし":
+            target_parts.append(f"日:{info['target_day']}")
+        if info['target_lower']:
+            time_type, time_value = info['target_lower']
+            # 個別時間範囲の場合も考慮
+            parsed = self.parse_individual_timeframe(time_value)
+            if parsed:
+                target_parts.append(f"{time_type}:個別{parsed[0]}_{parsed[1]}")
+            else:
+                target_parts.append(f"{time_type}:{time_value}")
+        target_str = "_".join(target_parts) if target_parts else "対象なし"
+        
+        # 条件2部分
+        cond2_parts = []
+        if info.get('cond2_consecutive', 'なし') != "なし":
+            cond2_parts.append(f"連続条件:{info['cond2_consecutive']}本{info.get('cond2_consecutive_type', '陽線')}")
+        if info.get('cond2_month', 'なし') != "なし":
+            cond2_parts.append(f"月:{info['cond2_month']}")
+        if info.get('cond2_day', 'なし') != "なし":
+            cond2_parts.append(f"日:{info['cond2_day']}")
+        if info.get('cond2_lower'):
+            time_type, time_value = info['cond2_lower']
+            cond2_parts.append(f"{time_type}:{time_value}")
+        if info.get('cond2_candle', 'なし') != "なし":
+            cond2_parts.append(f"陽線陰線:{info['cond2_candle']}")
+        
+        # 条件1部分
+        cond_parts = []
+        if info.get('cond_consecutive', 'なし') != "なし":
+            cond_parts.append(f"連続条件:{info['cond_consecutive']}本{info.get('cond_consecutive_type', '陽線')}")
+        if info['cond_month'] != "なし":
+            cond_parts.append(f"月:{info['cond_month']}")
+        if info['cond_day'] != "なし":
+            cond_parts.append(f"日:{info['cond_day']}")
+        if info['cond_lower']:
+            time_type, time_value = info['cond_lower']
+            cond_parts.append(f"{time_type}:{time_value}")
+        if info['cond_candle'] != "なし":
+            cond_parts.append(f"陽線陰線:{info['cond_candle']}")
+        
+        # 条件2と条件1を結合
+        all_cond_parts = []
+        if cond2_parts:
+            all_cond_parts.append("条件2[" + "_".join(cond2_parts) + "]")
+        if cond_parts:
+            all_cond_parts.append("条件1[" + "_".join(cond_parts) + "]")
+        
+        cond_str = "_".join(all_cond_parts) if all_cond_parts else "条件なし"
+        
+        # 抽出内容部分
+        if info['extract_type'] == "陽線確率":
+            extract_str = "陽線確率"
+        else:
+            extract_str = f"幅_{info['extract_detail']}"
+        
+        # ★★★ 既存ファイルを検索 ★★★
+        existing_file = self.search_existing_csv(target_str, cond_str, extract_str)
+        
+        if existing_file:
+            # 既存ファイルが見つかった場合
+            self.result_text.insert(tk.END, f"既存の分析結果が見つかりました:\n")
+            self.result_text.insert(tk.END, f"{os.path.basename(existing_file)}\n")
+            self.result_text.insert(tk.END, "="*60 + "\n")
+            
+            # 既存結果を読み込み
+            loaded_results = self.load_existing_results(existing_file)
+            
+            if loaded_results:
+                self.analysis_results = loaded_results
+                
+                # 結果を表示
+                self.result_text.insert(tk.END, f"総データ数: {len(loaded_results)}行\n")
+                self.result_text.insert(tk.END, "-" * 50 + "\n")
+                
+                # 陽線確率の場合
+                if info['extract_type'] == "陽線確率":
+                    if len(loaded_results) > 0 and '陽線確率(%)' in loaded_results[0]:
+                        for result in loaded_results:
+                            self.result_text.insert(tk.END, f"総ローソク足数: {result.get('総ローソク足数', 'N/A')}\n")
+                            self.result_text.insert(tk.END, f"陽線の数: {result.get('陽線の数', 'N/A')}\n")
+                            self.result_text.insert(tk.END, f"陰線の数: {result.get('陰線の数', 'N/A')}\n")
+                            self.result_text.insert(tk.END, f"陽線確率: {result.get('陽線確率(%)', 'N/A')}%\n")
+                # 幅の場合
+                else:
+                    self.result_text.insert(tk.END, f"{'幅':<12} {'回数':<8} {'確率'}\n")
+                    self.result_text.insert(tk.END, "-" * 40 + "\n")
+                    for result in loaded_results[:30]:  # 上位30件を表示
+                        width = result.get('幅', 0)
+                        count = result.get('回数', 0)
+                        prob = result.get('確率(%)', 0)
+                        self.result_text.insert(tk.END, f"{width:<12.5f} {count:<8} {prob:>6.2f}%\n")
+                
+                self.result_text.insert(tk.END, "\n既存の結果を使用しました。\n")
+                
+                # 履歴に追加
+                self.add_to_history()
+                return
+            else:
+                self.result_text.insert(tk.END, "既存ファイルの読み込みに失敗しました。新規分析を実行します。\n")
+                self.result_text.insert(tk.END, "="*60 + "\n")
+        
+        # ★★★ 個別時間範囲のチェック（既存コードと同じ） ★★★
+        target_individual_timeframe = None
+        if target_lower:
+            time_type, time_value = target_lower
+            parsed = self.parse_individual_timeframe(time_value)
+            if parsed:
+                target_individual_timeframe = (time_type, parsed[0], parsed[1])
+                sub_timeframes = self.get_sub_timeframes_in_range(parsed[0], parsed[1], time_type)
+                
+                self.result_text.insert(tk.END, f"個別時間範囲: {parsed[0]} {parsed[1]} 内の {time_type}\n")
+                self.result_text.insert(tk.END, f"抽出対象: {len(sub_timeframes)}個\n")
+                self.result_text.insert(tk.END, "="*60 + "\n")
+                
+                if not hasattr(self, 'current_extracted_items'):
+                    self.current_extracted_items = []
+                else:
+                    self.current_extracted_items.clear()
+                
+                for sub_time in sub_timeframes:
+                    self.result_text.insert(tk.END, f"\n【対象: {time_type} {sub_time}】\n")
+                    self.result_text.insert(tk.END, "="*60 + "\n")
+                    
+                    self.current_extracted_items.append(sub_time)
+                    
+                    temp_lower = (time_type, sub_time)
+                    
+                    cond_month = self.cond_month.get()
+                    cond_day = self.cond_day.get()
+                    cond_lower = self.get_selected_lower_time('cond')
+                    cond_candle = self.cond_candle.get()
+                    
+                    self.analyze_single_condition(target_month, target_day, temp_lower,
+                                                cond_month, cond_day, cond_lower, cond_candle,
+                                                None)
+                
+                self.add_to_history()
+                return
+        
+        # 個別全ての処理（既存コードと同じ）
         target_individual_all = None
         if target_month == "個別全て":
             target_individual_all = ("月", self.get_individual_all_values("月", self.target_month))
@@ -1295,7 +1397,6 @@ class ChartAnalyzerUI:
         
         # 個別全ての場合、それぞれの値について分析を実行
         if target_individual_all:
-            # 個別全ての抽出項目を記録する変数を初期化
             if not hasattr(self, 'current_extracted_items'):
                 self.current_extracted_items = []
             else:
@@ -1309,7 +1410,6 @@ class ChartAnalyzerUI:
                 
                 self.current_extracted_items.append(value)
                 
-                # 一時的に値を設定
                 temp_month = value if filter_type == "月" else target_month
                 temp_day = value if filter_type == "日" else target_day
                 temp_lower = (target_lower[0], value) if target_lower and filter_type == target_lower[0] else target_lower
@@ -1324,7 +1424,6 @@ class ChartAnalyzerUI:
                 self.result_text.insert(tk.END, f"【条件: {value}】\n")
                 self.result_text.insert(tk.END, f"{'='*60}\n")
                 
-                # 一時的に値を設定
                 temp_cond_month = value if filter_type == "月" else cond_month
                 temp_cond_day = value if filter_type == "日" else cond_day
                 temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
@@ -1445,6 +1544,38 @@ class ChartAnalyzerUI:
                                                 cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
                                                 cond2_lower, cond2_candle)
         
+    def search_existing_csv(self, target_str, cond_str, extract_str):
+        """既存のCSVファイルを検索"""
+        save_dir = "C:/Users/81803/OneDrive/ドキュメント/TyuusyutuKekka_Chart"
+        
+        if not os.path.exists(save_dir):
+            return None
+        
+        # ファイル名に使えない文字を置換（save_to_csvと同じ処理）
+        target_str = target_str.replace(":", "-").replace("/", "-").replace("\\", "-")
+        cond_str = cond_str.replace(":", "-").replace("/", "-").replace("\\", "-").replace("[", "(").replace("]", ")")
+        
+        filename = f"{target_str}_{cond_str}_{extract_str}.csv"
+        filepath = os.path.join(save_dir, filename)
+        
+        if os.path.exists(filepath):
+            return filepath
+        
+        return None
+
+    def load_existing_results(self, filepath):
+        """既存のCSVファイルから結果を読み込む"""
+        try:
+            df = pd.read_csv(filepath, encoding='utf-8-sig')
+            
+            # DataFrameを辞書のリストに変換
+            results = df.to_dict('records')
+            
+            return results
+        except Exception as e:
+            print(f"既存結果の読み込みエラー: {e}")
+            return None
+    
     def process_with_separate_conditions(self, target_df, cond_df, cond2_df,
                                      target_month, target_day, target_lower,
                                      cond_month, cond_day, cond_lower, cond_candle,
