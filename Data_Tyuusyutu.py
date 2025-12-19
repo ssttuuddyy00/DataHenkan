@@ -158,65 +158,55 @@ class ChartAnalyzerUI:
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
         )
 
-        ttk.Label(cat2_frame, text="M30:").grid(
-            row=3, column=2, sticky=tk.W, padx=(10, 0)
-        )
-        m30_values = ["なし", "個別全て"] + [
-            f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]
-        ]
-        self.target_m30 = ttk.Combobox(
-            cat2_frame, values=m30_values, width=15, state="readonly"
-        )
+        ttk.Label(cat2_frame, text="M30:").grid(row=3, column=2, sticky=tk.W, padx=(10,0))
+        # ★★★ 個別H4、個別H1を追加 ★★★
+        m30_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
+        m30_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
+        m30_values = ["なし", "個別全て"] + m30_individual_h4 + m30_individual_h1 + \
+                    [f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
+        self.target_m30 = ttk.Combobox(cat2_frame, values=m30_values, width=15, state="readonly")
         self.target_m30.grid(row=3, column=3, padx=5)
         self.target_m30.current(0)
-        self.target_m30.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
-        )
+        self.target_m30.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
 
         ttk.Label(cat2_frame, text="M15:").grid(row=4, column=0, sticky=tk.W)
-        m15_values = ["なし", "個別全て"] + [
-            f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}"
-            for h in range(24)
-            for m in [0, 15, 30, 45]
-        ]
-        self.target_m15 = ttk.Combobox(
-            cat2_frame, values=m15_values, width=15, state="readonly"
-        )
+        # ★★★ 個別H4、個別H1、個別M30を追加 ★★★
+        m15_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
+        m15_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
+        m15_individual_m30 = [f"個別M30_{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
+        m15_values = ["なし", "個別全て"] + m15_individual_h4 + m15_individual_h1 + m15_individual_m30 + \
+                    [f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}" for h in range(24) for m in [0, 15, 30, 45]]
+        self.target_m15 = ttk.Combobox(cat2_frame, values=m15_values, width=15, state="readonly")
         self.target_m15.grid(row=4, column=1, padx=5)
         self.target_m15.current(0)
-        self.target_m15.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
-        )
+        self.target_m15.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
 
-        ttk.Label(cat2_frame, text="M5:").grid(
-            row=4, column=2, sticky=tk.W, padx=(10, 0)
-        )
-        m5_values = ["なし", "個別全て"] + [
-            f"{h:02d}:{m:02d}-{h:02d}:{m+5:02d}"
-            for h in range(24)
-            for m in range(0, 60, 5)
-        ]
-        self.target_m5 = ttk.Combobox(
-            cat2_frame, values=m5_values[:50], width=15, state="readonly"
-        )
+        ttk.Label(cat2_frame, text="M5:").grid(row=4, column=2, sticky=tk.W, padx=(10,0))
+        # ★★★ 個別H4、個別H1、個別M30、個別M15を追加 ★★★
+        m5_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
+        m5_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
+        m5_individual_m30 = [f"個別M30_{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
+        m5_individual_m15 = [f"個別M15_{h:02d}:{m:02d}-{h:02d}:{m+15:02d}" for h in range(24) for m in [0, 15, 30, 45]]
+        m5_base_values = [f"{h:02d}:{m:02d}-{h:02d}:{m+5:02d}" for h in range(24) for m in range(0, 60, 5)]
+        m5_values = ["なし", "個別全て"] + m5_individual_h4 + m5_individual_h1 + m5_individual_m30 + m5_individual_m15 + m5_base_values[:50]
+        self.target_m5 = ttk.Combobox(cat2_frame, values=m5_values[:100], width=15, state="readonly")
         self.target_m5.grid(row=4, column=3, padx=5)
         self.target_m5.current(0)
-        self.target_m5.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
-        )
+        self.target_m5.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
 
         ttk.Label(cat2_frame, text="M1:").grid(row=5, column=0, sticky=tk.W)
-        m1_values = ["なし", "個別全て"] + [
-            f"{h:02d}:{m:02d}-{h:02d}:{m+1:02d}" for h in range(24) for m in range(60)
-        ]
-        self.target_m1 = ttk.Combobox(
-            cat2_frame, values=m1_values[:50], width=15, state="readonly"
-        )
+        # ★★★ 個別H4、個別H1、個別M30、個別M15、個別M5を追加 ★★★
+        m1_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
+        m1_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
+        m1_individual_m30 = [f"個別M30_{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
+        m1_individual_m15 = [f"個別M15_{h:02d}:{m:02d}-{h:02d}:{m+15:02d}" for h in range(24) for m in [0, 15, 30, 45]]
+        m1_individual_m5 = [f"個別M5_{h:02d}:{m:02d}-{h:02d}:{m+5:02d}" for h in range(24) for m in range(0, 60, 5)]
+        m1_base_values = [f"{h:02d}:{m:02d}-{h:02d}:{m+1:02d}" for h in range(24) for m in range(60)]
+        m1_values = ["なし", "個別全て"] + m1_individual_h4[:3] + m1_individual_h1[:10] + m1_individual_m30[:10] + m1_individual_m15[:10] + m1_individual_m5[:10] + m1_base_values[:50]
+        self.target_m1 = ttk.Combobox(cat2_frame, values=m1_values[:100], width=15, state="readonly")
         self.target_m1.grid(row=5, column=1, padx=5)
         self.target_m1.current(0)
-        self.target_m1.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
-        )
+        self.target_m1.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
 
         # カテゴリ3: 条件
         cat3_frame = ttk.LabelFrame(main_frame, text="カテゴリ3: 条件", padding="10")
@@ -1139,22 +1129,125 @@ class ChartAnalyzerUI:
             values = ["陽線", "陰線"]
 
         return values
+    
+    def parse_individual_timeframe(self, value):
+        """個別時間範囲の指定を解析
+        例: "個別H1_00:00-01:00" -> ("H1", "00:00-01:00")
+        """
+        if value.startswith("個別"):
+            parts = value.split("_", 1)
+            if len(parts) == 2:
+                timeframe = parts[0].replace("個別", "")
+                time_range = parts[1]
+                return (timeframe, time_range)
+        return None
 
+    def get_sub_timeframes_in_range(self, parent_timeframe, time_range, target_timeframe):
+        """指定された時間範囲内の子時間足をすべて取得
+        例: parent_timeframe="H1", time_range="00:00-01:00", target_timeframe="M15"
+        -> ["00:00-00:15", "00:15-00:30", "00:30-00:45", "00:45-01:00"]
+        """
+        start_time, end_time = time_range.split("-")
+        start_hour, start_min = map(int, start_time.split(":"))
+        end_hour, end_min = map(int, end_time.split(":"))
+        
+        # 開始時刻を分に変換
+        start_minutes = start_hour * 60 + start_min
+        end_minutes = end_hour * 60 + end_min
+        
+        # 日をまたぐ場合の処理
+        if end_minutes <= start_minutes:
+            end_minutes += 24 * 60
+        
+        # 対象時間足の間隔を取得
+        interval_map = {
+            "M1": 1,
+            "M5": 5,
+            "M15": 15,
+            "M30": 30,
+            "H1": 60,
+            "H4": 240
+        }
+        
+        interval = interval_map.get(target_timeframe, 15)
+        
+        # 時間範囲内のすべての子時間足を生成
+        sub_timeframes = []
+        current = start_minutes
+        
+        while current < end_minutes:
+            next_time = current + interval
+            
+            # 分を時:分に変換
+            curr_h = (current // 60) % 24
+            curr_m = current % 60
+            next_h = (next_time // 60) % 24
+            next_m = next_time % 60
+            
+            time_str = f"{curr_h:02d}:{curr_m:02d}-{next_h:02d}:{next_m:02d}"
+            sub_timeframes.append(time_str)
+            
+            current = next_time
+        
+        return sub_timeframes
+    
     def analyze_data(self):
         """データ分析を実行"""
         self.result_text.delete(1.0, tk.END)
-        self.analysis_results = []  # 結果をクリア
-        self.current_analysis_info = {}  # 分析情報をクリア
-
+        self.analysis_results = []
+        self.current_analysis_info = {}
+        
         # 対象の選択を確認
         target_month = self.target_month.get()
         target_day = self.target_day.get()
-        target_lower = self.get_selected_lower_time("target")
-
+        target_lower = self.get_selected_lower_time('target')
+        
         if target_month == "なし" and target_day == "なし" and not target_lower:
             self.result_text.insert(tk.END, "カテゴリ2で対象を選択してください。\n")
             return
-
+        
+        # ★★★ 個別時間範囲のチェック ★★★
+        target_individual_timeframe = None
+        if target_lower:
+            time_type, time_value = target_lower
+            parsed = self.parse_individual_timeframe(time_value)
+            if parsed:
+                target_individual_timeframe = (time_type, parsed[0], parsed[1])
+                # 個別時間範囲内のすべての子時間足を取得
+                sub_timeframes = self.get_sub_timeframes_in_range(parsed[0], parsed[1], time_type)
+                
+                self.result_text.insert(tk.END, f"個別時間範囲: {parsed[0]} {parsed[1]} 内の {time_type}\n")
+                self.result_text.insert(tk.END, f"抽出対象: {len(sub_timeframes)}個\n")
+                self.result_text.insert(tk.END, "="*60 + "\n")
+                
+                # 個別全てと同様の処理
+                if not hasattr(self, 'current_extracted_items'):
+                    self.current_extracted_items = []
+                else:
+                    self.current_extracted_items.clear()
+                
+                for sub_time in sub_timeframes:
+                    self.result_text.insert(tk.END, f"\n【対象: {time_type} {sub_time}】\n")
+                    self.result_text.insert(tk.END, "="*60 + "\n")
+                    
+                    self.current_extracted_items.append(sub_time)
+                    
+                    # 一時的に値を設定
+                    temp_lower = (time_type, sub_time)
+                    
+                    cond_month = self.cond_month.get()
+                    cond_day = self.cond_day.get()
+                    cond_lower = self.get_selected_lower_time('cond')
+                    cond_candle = self.cond_candle.get()
+                    
+                    self.analyze_single_condition(target_month, target_day, temp_lower,
+                                                cond_month, cond_day, cond_lower, cond_candle,
+                                                None)
+                
+                # 履歴に追加
+                self.add_to_history()
+                return
+        
         # 分析情報を保存
         self.current_analysis_info = {
             'target_month': target_month,
@@ -1166,135 +1259,89 @@ class ChartAnalyzerUI:
             'cond_day': self.cond_day.get(),
             'cond_lower': self.get_selected_lower_time('cond'),
             'cond_candle': self.cond_candle.get(),
-            'cond2_consecutive': self.cond2_consecutive.get(),  # ★追加
-            'cond2_consecutive_type': self.cond2_consecutive_type.get(),  # ★追加
-            'cond2_month': self.cond2_month.get(),  # ★追加
-            'cond2_day': self.cond2_day.get(),  # ★追加
-            'cond2_lower': self.get_selected_lower_time('cond2'),  # ★追加
-            'cond2_candle': self.cond2_candle.get(),  # ★追加
+            'cond2_consecutive': self.cond2_consecutive.get(),
+            'cond2_consecutive_type': self.cond2_consecutive_type.get(),
+            'cond2_month': self.cond2_month.get(),
+            'cond2_day': self.cond2_day.get(),
+            'cond2_lower': self.get_selected_lower_time('cond2'),
+            'cond2_candle': self.cond2_candle.get(),
             'extract_type': self.extract_type.get(),
             'extract_detail': self.extract_detail.get()
         }
-
-        if target_month == "なし" and target_day == "なし" and not target_lower:
-            self.result_text.insert(tk.END, "カテゴリ2で対象を選択してください。\n")
-            return
-
+        
         # 個別全ての処理
         target_individual_all = None
         if target_month == "個別全て":
-            target_individual_all = (
-                "月",
-                self.get_individual_all_values("月", self.target_month),
-            )
+            target_individual_all = ("月", self.get_individual_all_values("月", self.target_month))
         elif target_day == "個別全て":
-            target_individual_all = (
-                "日",
-                self.get_individual_all_values("日", self.target_day),
-            )
+            target_individual_all = ("日", self.get_individual_all_values("日", self.target_day))
         elif target_lower and target_lower[1] == "個別全て":
-            target_individual_all = (
-                target_lower[0],
-                self.get_individual_all_values(target_lower[0], None),
-            )
-
+            target_individual_all = (target_lower[0], self.get_individual_all_values(target_lower[0], None))
+        
         cond_month = self.cond_month.get()
         cond_day = self.cond_day.get()
-        cond_lower = self.get_selected_lower_time("cond")
+        cond_lower = self.get_selected_lower_time('cond')
         cond_candle = self.cond_candle.get()
-
+        
         cond_individual_all = None
         if cond_month == "個別全て":
-            cond_individual_all = (
-                "月",
-                self.get_individual_all_values("月", self.cond_month),
-            )
+            cond_individual_all = ("月", self.get_individual_all_values("月", self.cond_month))
         elif cond_day == "個別全て":
-            cond_individual_all = (
-                "日",
-                self.get_individual_all_values("日", self.cond_day),
-            )
+            cond_individual_all = ("日", self.get_individual_all_values("日", self.cond_day))
         elif cond_lower and cond_lower[1] == "個別全て":
-            cond_individual_all = (
-                cond_lower[0],
-                self.get_individual_all_values(cond_lower[0], None),
-            )
+            cond_individual_all = (cond_lower[0], self.get_individual_all_values(cond_lower[0], None))
         elif cond_candle == "個別全て":
-            cond_individual_all = (
-                "陽線・陰線",
-                self.get_individual_all_values("陽線・陰線", self.cond_candle),
-            )
-
+            cond_individual_all = ("陽線・陰線", self.get_individual_all_values("陽線・陰線", self.cond_candle))
+        
         # 個別全ての場合、それぞれの値について分析を実行
         if target_individual_all:
+            # 個別全ての抽出項目を記録する変数を初期化
+            if not hasattr(self, 'current_extracted_items'):
+                self.current_extracted_items = []
+            else:
+                self.current_extracted_items.clear()
+            
             filter_type, values = target_individual_all
             for value in values:
                 self.result_text.insert(tk.END, f"\n{'='*60}\n")
                 self.result_text.insert(tk.END, f"【対象: {value}】\n")
                 self.result_text.insert(tk.END, f"{'='*60}\n")
-
+                
+                self.current_extracted_items.append(value)
+                
                 # 一時的に値を設定
                 temp_month = value if filter_type == "月" else target_month
                 temp_day = value if filter_type == "日" else target_day
-                temp_lower = (
-                    (target_lower[0], value)
-                    if target_lower and filter_type == target_lower[0]
-                    else target_lower
-                )
-
-                self.analyze_single_condition(
-                    temp_month,
-                    temp_day,
-                    temp_lower,
-                    cond_month,
-                    cond_day,
-                    cond_lower,
-                    cond_candle,
-                    cond_individual_all,
-                )
+                temp_lower = (target_lower[0], value) if target_lower and filter_type == target_lower[0] else target_lower
+                
+                self.analyze_single_condition(temp_month, temp_day, temp_lower, 
+                                            cond_month, cond_day, cond_lower, cond_candle, 
+                                            cond_individual_all)
         elif cond_individual_all:
             filter_type, values = cond_individual_all
             for value in values:
                 self.result_text.insert(tk.END, f"\n{'='*60}\n")
                 self.result_text.insert(tk.END, f"【条件: {value}】\n")
                 self.result_text.insert(tk.END, f"{'='*60}\n")
-
+                
                 # 一時的に値を設定
                 temp_cond_month = value if filter_type == "月" else cond_month
                 temp_cond_day = value if filter_type == "日" else cond_day
-                temp_cond_lower = (
-                    (cond_lower[0], value)
-                    if cond_lower and filter_type == cond_lower[0]
-                    else cond_lower
-                )
+                temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
                 temp_cond_candle = value if filter_type == "陽線・陰線" else cond_candle
-
-                self.analyze_single_condition(
-                    target_month,
-                    target_day,
-                    target_lower,
-                    temp_cond_month,
-                    temp_cond_day,
-                    temp_cond_lower,
-                    temp_cond_candle,
-                    None,
-                )
+                
+                self.analyze_single_condition(target_month, target_day, target_lower,
+                                            temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
+                                            None)
         else:
             # 通常の単一条件分析
-            self.analyze_single_condition(
-                target_month,
-                target_day,
-                target_lower,
-                cond_month,
-                cond_day,
-                cond_lower,
-                cond_candle,
-                None,
-            )
-
+            self.analyze_single_condition(target_month, target_day, target_lower,
+                                        cond_month, cond_day, cond_lower, cond_candle,
+                                        None)
+        
         # 履歴に追加
         self.add_to_history()
-
+    
     def analyze_single_condition(self, target_month, target_day, target_lower,
                              cond_month, cond_day, cond_lower, cond_candle,
                              cond_individual_all):
