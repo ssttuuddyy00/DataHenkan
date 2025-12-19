@@ -1381,16 +1381,58 @@ class ChartAnalyzerUI:
                           cond_consecutive, cond_consecutive_type,
                           cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day,
                           cond2_lower, cond2_candle):
-    """条件適用後のデータ処理"""
-    original_df = df.copy()
-    
-    # 条件2を最初に適用（既存のコードはそのまま）
-    if (cond2_consecutive != "なし" or cond2_month != "なし" or cond2_day != "なし" or 
-        cond2_lower or cond2_candle != "なし"):
+        """条件適用後のデータ処理"""
+        original_df = df.copy()
         
-        if cond2_consecutive != "なし":
-            consecutive_num = int(cond2_consecutive)
-            is_bullish = (cond2_consecutive_type == "陽線")
+        # 条件2を最初に適用（既存のコードはそのまま）
+        if (cond2_consecutive != "なし" or cond2_month != "なし" or cond2_day != "なし" or 
+            cond2_lower or cond2_candle != "なし"):
+            
+            if cond2_consecutive != "なし":
+                consecutive_num = int(cond2_consecutive)
+                is_bullish = (cond2_consecutive_type == "陽線")
+                
+                valid_indices = []
+                for i in range(consecutive_num, len(df)):
+                    past_candles = df.iloc[i-consecutive_num:i]
+                    if is_bullish:
+                        if all(past_candles['Close'] > past_candles['Open']):
+                            valid_indices.append(i)
+                    else:
+                        if all(past_candles['Close'] < past_candles['Open']):
+                            valid_indices.append(i)
+                
+                if not valid_indices:
+                    self.result_text.insert(tk.END, f"条件2の連続条件（過去{consecutive_num}本{cond2_consecutive_type}）に合致するデータがありません。\n\n")
+                    return
+                
+                df = df.iloc[valid_indices].reset_index(drop=True)
+                original_df = df.copy()
+                self.result_text.insert(tk.END, f"条件2の連続条件に合致: {len(df)}行\n")
+            
+            condition2_df = self.filter_data(df, cond2_month, cond2_day, cond2_lower, cond2_candle)
+            
+            if condition2_df.empty:
+                self.result_text.insert(tk.END, "条件2に合致するデータがありません。\n\n")
+                return
+            
+            self.result_text.insert(tk.END, f"条件2に合致: {len(condition2_df)}行\n")
+            
+            condition2_indices = condition2_df.index.tolist()
+            next_indices = [i + 1 for i in condition2_indices if i + 1 < len(original_df)]
+            
+            if not next_indices:
+                self.result_text.insert(tk.END, "条件2後のデータがありません。\n\n")
+                return
+            
+            df = original_df.iloc[next_indices].reset_index(drop=True)
+            original_df = df.copy()
+            self.result_text.insert(tk.END, f"条件2後のデータ: {len(df)}行\n")
+        
+        # 条件1の連続条件を適用
+        if cond_consecutive != "なし":
+            consecutive_num = int(cond_consecutive)
+            is_bullish = (cond_consecutive_type == "陽線")
             
             valid_indices = []
             for i in range(consecutive_num, len(df)):
@@ -1403,259 +1445,228 @@ class ChartAnalyzerUI:
                         valid_indices.append(i)
             
             if not valid_indices:
-                self.result_text.insert(tk.END, f"条件2の連続条件（過去{consecutive_num}本{cond2_consecutive_type}）に合致するデータがありません。\n\n")
+                self.result_text.insert(tk.END, f"条件1の連続条件（過去{consecutive_num}本{cond_consecutive_type}）に合致するデータがありません。\n\n")
                 return
             
             df = df.iloc[valid_indices].reset_index(drop=True)
             original_df = df.copy()
-            self.result_text.insert(tk.END, f"条件2の連続条件に合致: {len(df)}行\n")
+            self.result_text.insert(tk.END, f"条件1の連続条件に合致: {len(df)}行\n")
         
-        condition2_df = self.filter_data(df, cond2_month, cond2_day, cond2_lower, cond2_candle)
-        
-        if condition2_df.empty:
-            self.result_text.insert(tk.END, "条件2に合致するデータがありません。\n\n")
-            return
-        
-        self.result_text.insert(tk.END, f"条件2に合致: {len(condition2_df)}行\n")
-        
-        condition2_indices = condition2_df.index.tolist()
-        next_indices = [i + 1 for i in condition2_indices if i + 1 < len(original_df)]
-        
-        if not next_indices:
-            self.result_text.insert(tk.END, "条件2後のデータがありません。\n\n")
-            return
-        
-        df = original_df.iloc[next_indices].reset_index(drop=True)
-        original_df = df.copy()
-        self.result_text.insert(tk.END, f"条件2後のデータ: {len(df)}行\n")
-    
-    # 条件1の連続条件を適用
-    if cond_consecutive != "なし":
-        consecutive_num = int(cond_consecutive)
-        is_bullish = (cond_consecutive_type == "陽線")
-        
-        valid_indices = []
-        for i in range(consecutive_num, len(df)):
-            past_candles = df.iloc[i-consecutive_num:i]
-            if is_bullish:
-                if all(past_candles['Close'] > past_candles['Open']):
-                    valid_indices.append(i)
-            else:
-                if all(past_candles['Close'] < past_candles['Open']):
-                    valid_indices.append(i)
-        
-        if not valid_indices:
-            self.result_text.insert(tk.END, f"条件1の連続条件（過去{consecutive_num}本{cond_consecutive_type}）に合致するデータがありません。\n\n")
-            return
-        
-        df = df.iloc[valid_indices].reset_index(drop=True)
-        original_df = df.copy()
-        self.result_text.insert(tk.END, f"条件1の連続条件に合致: {len(df)}行\n")
-    
-    # ★★★ 条件1のフィルタを適用（時間粒度の違いに対応） ★★★
-    if cond_month != "なし" or cond_day != "なし" or cond_lower or cond_candle != "なし":
-        
-        # 条件と対象の時間粒度が異なる場合の処理
-        target_time = target_lower[0] if target_lower else None
-        cond_time = cond_lower[0] if cond_lower else None
-        
-        # 時間粒度の階層を定義
-        time_hierarchy = {
-            "M1": 1, "M5": 5, "M15": 15, "M30": 30, 
-            "H1": 60, "H4": 240, "セッション": 360
-        }
-        
-        # 条件の時間粒度が対象より粗い場合（例: 条件H1、対象M30）
-        if (target_time and cond_time and 
-            time_hierarchy.get(cond_time, 0) > time_hierarchy.get(target_time, 0)):
+        # ★★★ 条件1のフィルタを適用（時間粒度の違いに対応） ★★★
+        if cond_month != "なし" or cond_day != "なし" or cond_lower or cond_candle != "なし":
             
-            # 条件の時間範囲内にある対象の足を抽出
-            condition_df = self.filter_data(df, cond_month, cond_day, cond_lower, cond_candle)
+            # 条件と対象の時間粒度が異なる場合の処理
+            target_time = target_lower[0] if target_lower else None
+            cond_time = cond_lower[0] if cond_lower else None
             
-            if condition_df.empty:
-                self.result_text.insert(tk.END, "条件1に合致するデータがありません。\n\n")
-                return
+            # 時間粒度の階層を定義
+            time_hierarchy = {
+                "M1": 1, "M5": 5, "M15": 15, "M30": 30, 
+                "H1": 60, "H4": 240, "セッション": 360
+            }
             
-            self.result_text.insert(tk.END, f"条件1に合致: {len(condition_df)}行\n")
-            
-            # ★★★ 条件の時間範囲から対象の時間範囲を特定 ★★★
-            if 'TimeRange' in condition_df.columns and 'TimeRange' in original_df.columns:
-                target_rows = []
+            # 条件の時間粒度が対象より粗い場合（例: 条件H1、対象M30）
+            if (target_time and cond_time and 
+                time_hierarchy.get(cond_time, 0) > time_hierarchy.get(target_time, 0)):
                 
-                for _, cond_row in condition_df.iterrows():
-                    # 条件の時間範囲を取得（例: "00:00-01:00"）
-                    cond_time_range = cond_row['TimeRange']
-                    cond_start = cond_time_range.split('-')[0]
-                    cond_end = cond_time_range.split('-')[1]
+                # 条件の時間範囲内にある対象の足を抽出
+                condition_df = self.filter_data(df, cond_month, cond_day, cond_lower, cond_candle)
+                
+                if condition_df.empty:
+                    self.result_text.insert(tk.END, "条件1に合致するデータがありません。\n\n")
+                    return
+                
+                self.result_text.insert(tk.END, f"条件1に合致: {len(condition_df)}行\n")
+                
+                # ★★★ 条件の時間範囲から対象の時間範囲を特定 ★★★
+                if 'TimeRange' in condition_df.columns and 'TimeRange' in original_df.columns:
+                    target_rows = []
                     
-                    # 同じ日付で条件の時間範囲以降の対象時間を探す
-                    same_date_df = original_df.copy()
-                    
-                    # Year, Month, Dayが一致するものを絞り込み
-                    if 'Year' in condition_df.columns:
-                        same_date_df = same_date_df[same_date_df['Year'] == cond_row['Year']]
-                    if 'Month' in condition_df.columns:
-                        same_date_df = same_date_df[same_date_df['Month'] == cond_row['Month']]
-                    if 'Day' in condition_df.columns:
-                        same_date_df = same_date_df[same_date_df['Day'] == cond_row['Day']]
-                    
-                    # 対象の時間範囲が条件の終了時刻以降のものを取得
-                    for _, target_row in same_date_df.iterrows():
-                        target_time_range = target_row['TimeRange']
-                        target_start = target_time_range.split('-')[0]
+                    for _, cond_row in condition_df.iterrows():
+                        # 条件の時間範囲を取得（例: "00:00-01:00"）
+                        cond_time_range = cond_row['TimeRange']
+                        cond_start = cond_time_range.split('-')[0]
+                        cond_end = cond_time_range.split('-')[1]
                         
-                        # 条件の終了時刻以降かチェック
-                        if target_start >= cond_end:
-                            # 対象の時間範囲と一致するか確認
-                            if target_lower and target_lower[1] != "個別全て":
-                                if target_time_range == target_lower[1]:
+                        # 同じ日付で条件の時間範囲以降の対象時間を探す
+                        same_date_df = original_df.copy()
+                        
+                        # Year, Month, Dayが一致するものを絞り込み
+                        if 'Year' in condition_df.columns:
+                            same_date_df = same_date_df[same_date_df['Year'] == cond_row['Year']]
+                        if 'Month' in condition_df.columns:
+                            same_date_df = same_date_df[same_date_df['Month'] == cond_row['Month']]
+                        if 'Day' in condition_df.columns:
+                            same_date_df = same_date_df[same_date_df['Day'] == cond_row['Day']]
+                        
+                        # 対象の時間範囲が条件の終了時刻以降のものを取得
+                        for _, target_row in same_date_df.iterrows():
+                            target_time_range = target_row['TimeRange']
+                            target_start = target_time_range.split('-')[0]
+                            
+                            # 条件の終了時刻以降かチェック
+                            if target_start >= cond_end:
+                                # 対象の時間範囲と一致するか確認
+                                if target_lower and target_lower[1] != "個別全て":
+                                    if target_time_range == target_lower[1]:
+                                        target_rows.append(target_row)
+                                        break  # 最初の一致で終了
+                                else:
+                                    # 対象が指定されていない場合は条件の次の足
                                     target_rows.append(target_row)
-                                    break  # 最初の一致で終了
+                                    break
+                    
+                    if target_rows:
+                        df = pd.DataFrame(target_rows)
+                        self.result_text.insert(tk.END, f"条件1に基づく対象データ: {len(df)}行\n")
+                    else:
+                        self.result_text.insert(tk.END, "条件1に対応する対象データがありません。\n\n")
+                        return
+                else:
+                    # TimeRangeカラムがない場合は通常の次の足処理
+                    condition_indices = condition_df.index.tolist()
+                    target_indices = [i + 1 for i in condition_indices if i + 1 < len(original_df)]
+                    
+                    if not target_indices:
+                        self.result_text.insert(tk.END, "条件後の対象データがありません。\n\n")
+                        return
+                    
+                    df = original_df.iloc[target_indices]
+                    self.result_text.insert(tk.END, f"条件後の対象: {len(df)}行\n")
+            
+            # 条件と対象が同じ粒度、または対象が粗い場合（既存の処理）
+            else:
+                condition_df = self.filter_data(df, cond_month, cond_day, cond_lower, cond_candle)
+                
+                if condition_df.empty:
+                    self.result_text.insert(tk.END, "条件1に合致するデータがありません。\n\n")
+                    return
+                
+                self.result_text.insert(tk.END, f"条件1に合致: {len(condition_df)}行\n")
+                
+                # 月足データの特別処理
+                if 'Month' in original_df.columns and 'Year' in original_df.columns and 'Day' not in original_df.columns:
+                    if cond_month != "なし" and cond_month != "全て" and target_month != "なし" and target_month != "全て":
+                        cond_month_num = int(cond_month.replace("月", ""))
+                        target_month_num = int(target_month.replace("月", ""))
+                        
+                        condition_years = condition_df[condition_df['Month'] == cond_month_num]['Year'].unique()
+                        
+                        target_rows = []
+                        for year in condition_years:
+                            if target_month_num > cond_month_num:
+                                target_row = original_df[(original_df['Year'] == year) & 
+                                                        (original_df['Month'] == target_month_num)]
                             else:
-                                # 対象が指定されていない場合は条件の次の足
+                                target_row = original_df[(original_df['Year'] == year + 1) & 
+                                                        (original_df['Month'] == target_month_num)]
+                            
+                            if not target_row.empty:
                                 target_rows.append(target_row)
-                                break
-                
-                if target_rows:
-                    df = pd.DataFrame(target_rows)
-                    self.result_text.insert(tk.END, f"条件1に基づく対象データ: {len(df)}行\n")
-                else:
-                    self.result_text.insert(tk.END, "条件1に対応する対象データがありません。\n\n")
-                    return
-            else:
-                # TimeRangeカラムがない場合は通常の次の足処理
-                condition_indices = condition_df.index.tolist()
-                target_indices = [i + 1 for i in condition_indices if i + 1 < len(original_df)]
-                
-                if not target_indices:
-                    self.result_text.insert(tk.END, "条件後の対象データがありません。\n\n")
-                    return
-                
-                df = original_df.iloc[target_indices]
-                self.result_text.insert(tk.END, f"条件後の対象: {len(df)}行\n")
-        
-        # 条件と対象が同じ粒度、または対象が粗い場合（既存の処理）
-        else:
-            condition_df = self.filter_data(df, cond_month, cond_day, cond_lower, cond_candle)
-            
-            if condition_df.empty:
-                self.result_text.insert(tk.END, "条件1に合致するデータがありません。\n\n")
-                return
-            
-            self.result_text.insert(tk.END, f"条件1に合致: {len(condition_df)}行\n")
-            
-            # 月足データの特別処理
-            if 'Month' in original_df.columns and 'Year' in original_df.columns and 'Day' not in original_df.columns:
-                if cond_month != "なし" and cond_month != "全て" and target_month != "なし" and target_month != "全て":
-                    cond_month_num = int(cond_month.replace("月", ""))
-                    target_month_num = int(target_month.replace("月", ""))
-                    
-                    condition_years = condition_df[condition_df['Month'] == cond_month_num]['Year'].unique()
-                    
-                    target_rows = []
-                    for year in condition_years:
-                        if target_month_num > cond_month_num:
-                            target_row = original_df[(original_df['Year'] == year) & 
-                                                    (original_df['Month'] == target_month_num)]
+                        
+                        if target_rows:
+                            df = pd.concat(target_rows, ignore_index=True)
+                            self.result_text.insert(tk.END, f"条件月に基づく対象月データ: {len(df)}行\n")
                         else:
-                            target_row = original_df[(original_df['Year'] == year + 1) & 
-                                                    (original_df['Month'] == target_month_num)]
-                        
-                        if not target_row.empty:
-                            target_rows.append(target_row)
-                    
-                    if target_rows:
-                        df = pd.concat(target_rows, ignore_index=True)
-                        self.result_text.insert(tk.END, f"条件月に基づく対象月データ: {len(df)}行\n")
+                            self.result_text.insert(tk.END, "条件に対応する対象月のデータがありません。\n\n")
+                            return
                     else:
-                        self.result_text.insert(tk.END, "条件に対応する対象月のデータがありません。\n\n")
-                        return
-                else:
-                    condition_indices = condition_df.index.tolist()
-                    target_indices = [i + 1 for i in condition_indices if i + 1 < len(original_df)]
-                    
-                    if not target_indices:
-                        self.result_text.insert(tk.END, "条件後の対象データがありません。\n\n")
-                        return
-                    
-                    df = original_df.iloc[target_indices]
-                    self.result_text.insert(tk.END, f"条件後の対象: {len(df)}行\n")
-            
-            # 日足データの特別処理
-            elif 'Day' in original_df.columns and 'Month' in original_df.columns and 'Year' in original_df.columns:
-                if (cond_month != "なし" and cond_month != "全て" and 
-                    cond_day != "なし" and cond_day != "全て" and
-                    target_month != "なし" and target_month != "全て" and
-                    target_day != "なし" and target_day != "全て"):
-                    
-                    cond_month_num = int(cond_month.replace("月", ""))
-                    cond_day_num = int(cond_day.replace("日", ""))
-                    target_month_num = int(target_month.replace("月", ""))
-                    target_day_num = int(target_day.replace("日", ""))
-                    
-                    condition_dates = condition_df[['Year', 'Month', 'Day']].values
-                    
-                    target_rows = []
-                    for year, month, day in condition_dates:
-                        target_year = year
-                        target_month_calc = target_month_num
+                        condition_indices = condition_df.index.tolist()
+                        target_indices = [i + 1 for i in condition_indices if i + 1 < len(original_df)]
                         
-                        if target_month_num < cond_month_num:
-                            target_year += 1
-                        elif target_month_num == cond_month_num:
+                        if not target_indices:
+                            self.result_text.insert(tk.END, "条件後の対象データがありません。\n\n")
+                            return
+                        
+                        df = original_df.iloc[target_indices]
+                        self.result_text.insert(tk.END, f"条件後の対象: {len(df)}行\n")
+                
+                # 日足データの特別処理
+                elif 'Day' in original_df.columns and 'Month' in original_df.columns and 'Year' in original_df.columns:
+                    if (cond_month != "なし" and cond_month != "全て" and 
+                        cond_day != "なし" and cond_day != "全て" and
+                        target_month != "なし" and target_month != "全て" and
+                        target_day != "なし" and target_day != "全て"):
+                        
+                        cond_month_num = int(cond_month.replace("月", ""))
+                        cond_day_num = int(cond_day.replace("日", ""))
+                        target_month_num = int(target_month.replace("月", ""))
+                        target_day_num = int(target_day.replace("日", ""))
+                        
+                        condition_dates = condition_df[['Year', 'Month', 'Day']].values
+                        
+                        target_rows = []
+                        for year, month, day in condition_dates:
+                            target_year = year
+                            target_month_calc = target_month_num
+                            
+                            if target_month_num < cond_month_num:
+                                target_year += 1
+                            elif target_month_num == cond_month_num:
+                                if target_day_num < cond_day_num:
+                                    target_year += 1
+                            
+                            target_row = original_df[
+                                (original_df['Year'] == target_year) & 
+                                (original_df['Month'] == target_month_calc) &
+                                (original_df['Day'] == target_day_num)
+                            ]
+                            
+                            if not target_row.empty:
+                                target_rows.append(target_row)
+                        
+                        if target_rows:
+                            df = pd.concat(target_rows, ignore_index=True)
+                            self.result_text.insert(tk.END, f"条件に基づく対象データ: {len(df)}行\n")
+                        else:
+                            self.result_text.insert(tk.END, "条件に対応する対象のデータがありません。\n\n")
+                            return
+                    
+                    elif (cond_month == "なし" and cond_day != "なし" and cond_day != "全て" and
+                        target_month == "なし" and target_day != "なし" and target_day != "全て"):
+                        
+                        cond_day_num = int(cond_day.replace("日", ""))
+                        target_day_num = int(target_day.replace("日", ""))
+                        
+                        condition_dates = condition_df[['Year', 'Month', 'Day']].values
+                        
+                        target_rows = []
+                        for year, month, day in condition_dates:
+                            target_year = year
+                            target_month_num = month
+                            
                             if target_day_num < cond_day_num:
-                                target_year += 1
+                                target_month_num += 1
+                                if target_month_num > 12:
+                                    target_month_num = 1
+                                    target_year += 1
+                            
+                            target_row = original_df[
+                                (original_df['Year'] == target_year) & 
+                                (original_df['Month'] == target_month_num) &
+                                (original_df['Day'] == target_day_num)
+                            ]
+                            
+                            if not target_row.empty:
+                                target_rows.append(target_row)
                         
-                        target_row = original_df[
-                            (original_df['Year'] == target_year) & 
-                            (original_df['Month'] == target_month_calc) &
-                            (original_df['Day'] == target_day_num)
-                        ]
-                        
-                        if not target_row.empty:
-                            target_rows.append(target_row)
+                        if target_rows:
+                            df = pd.concat(target_rows, ignore_index=True)
+                            self.result_text.insert(tk.END, f"条件日に基づく対象日データ: {len(df)}行\n")
+                        else:
+                            self.result_text.insert(tk.END, "条件に対応する対象日のデータがありません。\n\n")
+                            return
                     
-                    if target_rows:
-                        df = pd.concat(target_rows, ignore_index=True)
-                        self.result_text.insert(tk.END, f"条件に基づく対象データ: {len(df)}行\n")
                     else:
-                        self.result_text.insert(tk.END, "条件に対応する対象のデータがありません。\n\n")
-                        return
-                
-                elif (cond_month == "なし" and cond_day != "なし" and cond_day != "全て" and
-                      target_month == "なし" and target_day != "なし" and target_day != "全て"):
-                    
-                    cond_day_num = int(cond_day.replace("日", ""))
-                    target_day_num = int(target_day.replace("日", ""))
-                    
-                    condition_dates = condition_df[['Year', 'Month', 'Day']].values
-                    
-                    target_rows = []
-                    for year, month, day in condition_dates:
-                        target_year = year
-                        target_month_num = month
+                        condition_indices = condition_df.index.tolist()
+                        target_indices = [i + 1 for i in condition_indices if i + 1 < len(original_df)]
                         
-                        if target_day_num < cond_day_num:
-                            target_month_num += 1
-                            if target_month_num > 12:
-                                target_month_num = 1
-                                target_year += 1
+                        if not target_indices:
+                            self.result_text.insert(tk.END, "条件後の対象データがありません。\n\n")
+                            return
                         
-                        target_row = original_df[
-                            (original_df['Year'] == target_year) & 
-                            (original_df['Month'] == target_month_num) &
-                            (original_df['Day'] == target_day_num)
-                        ]
-                        
-                        if not target_row.empty:
-                            target_rows.append(target_row)
-                    
-                    if target_rows:
-                        df = pd.concat(target_rows, ignore_index=True)
-                        self.result_text.insert(tk.END, f"条件日に基づく対象日データ: {len(df)}行\n")
-                    else:
-                        self.result_text.insert(tk.END, "条件に対応する対象日のデータがありません。\n\n")
-                        return
+                        df = original_df.iloc[target_indices]
+                        self.result_text.insert(tk.END, f"条件後の対象: {len(df)}行\n")
                 
                 else:
                     condition_indices = condition_df.index.tolist()
@@ -1667,38 +1678,27 @@ class ChartAnalyzerUI:
                     
                     df = original_df.iloc[target_indices]
                     self.result_text.insert(tk.END, f"条件後の対象: {len(df)}行\n")
-            
-            else:
-                condition_indices = condition_df.index.tolist()
-                target_indices = [i + 1 for i in condition_indices if i + 1 < len(original_df)]
-                
-                if not target_indices:
-                    self.result_text.insert(tk.END, "条件後の対象データがありません。\n\n")
-                    return
-                
-                df = original_df.iloc[target_indices]
-                self.result_text.insert(tk.END, f"条件後の対象: {len(df)}行\n")
-    
-    # 対象フィルタを適用
-    df = self.filter_data(df, target_month, target_day, target_lower, "なし")
-    
-    if df.empty:
-        self.result_text.insert(tk.END, "フィルタ後の対象データが見つかりません。\n\n")
-        return
-    
-    self.result_text.insert(tk.END, f"最終対象データ: {len(df)}行\n")
-    self.result_text.insert(tk.END, "-" * 50 + "\n")
-    
-    # 抽出内容に応じて分析
-    extract_type = self.extract_type.get()
-    
-    if extract_type == "陽線確率":
-        self.analyze_bullish_probability(df)
-    else:
-        extract_detail = self.extract_detail.get()
-        self.analyze_width(df, extract_detail)
-    
-    self.result_text.insert(tk.END, "\n")
+        
+        # 対象フィルタを適用
+        df = self.filter_data(df, target_month, target_day, target_lower, "なし")
+        
+        if df.empty:
+            self.result_text.insert(tk.END, "フィルタ後の対象データが見つかりません。\n\n")
+            return
+        
+        self.result_text.insert(tk.END, f"最終対象データ: {len(df)}行\n")
+        self.result_text.insert(tk.END, "-" * 50 + "\n")
+        
+        # 抽出内容に応じて分析
+        extract_type = self.extract_type.get()
+        
+        if extract_type == "陽線確率":
+            self.analyze_bullish_probability(df)
+        else:
+            extract_detail = self.extract_detail.get()
+            self.analyze_width(df, extract_detail)
+        
+        self.result_text.insert(tk.END, "\n")
 
     def analyze_bullish_probability(self, df):
         """陽線確率を分析"""
