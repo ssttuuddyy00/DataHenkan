@@ -10,7 +10,7 @@ class ChartAnalyzerUI:
     def __init__(self, root):
         self.root = root
         self.root.title("チャートデータ分析")
-        self.root.geometry("1200x1100")  # ウィンドウサイズを拡大
+        self.root.geometry("1200x900")  # ウィンドウサイズを拡大
 
         # データディレクトリ
         self.data_dir = "C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData"
