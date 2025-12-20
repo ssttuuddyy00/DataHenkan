@@ -76,6 +76,15 @@ class ChartAnalyzerUI:
         )
         self.extract_detail.grid(row=1, column=1, padx=5, pady=5)
         self.extract_detail.current(2)
+        self.extract_detail.bind("<<ComboboxSelected>>", self.on_extract_detail_change)
+
+
+        # ★★★ 抽出内容条件を追加 ★★★
+        ttk.Label(cat1_frame, text="抽出内容条件:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.extract_condition = ttk.Combobox(cat1_frame, values=["なし", "陽線", "陰線"], width=15, state="disabled")
+        self.extract_condition.grid(row=2, column=1, padx=5, pady=5)
+        self.extract_condition.current(0)
+        
 
         # カテゴリ2: 対象
         cat2_frame = ttk.LabelFrame(main_frame, text="カテゴリ2: 対象", padding="10")
@@ -870,8 +879,22 @@ class ChartAnalyzerUI:
     def on_extract_type_change(self, event=None):
         if self.extract_type.get() == "陽線確率":
             self.extract_detail.config(state="disabled")
+            self.extract_condition.config(state="disabled")  # ★追加
         else:
             self.extract_detail.config(state="readonly")
+            # 抽出内容詳細に応じて条件の有効/無効を切り替え
+            self.on_extract_detail_change()
+
+    def on_extract_detail_change(self, event=None):
+        """抽出内容詳細が変更された時の処理"""
+        if self.extract_type.get() == "幅":
+            detail = self.extract_detail.get()
+            # 実体以外が選ばれている場合のみ条件を有効化
+            if detail in ["上幅", "下幅", "上髭", "下髭"]:
+                self.extract_condition.config(state="readonly")
+            else:  # 実体の場合
+                self.extract_condition.config(state="disabled")
+                self.extract_condition.current(0)  # "なし"にリセット
 
     def on_target_lower_change(self, event, category):
          # 下位で一つ選択されたら他を「なし」にする
@@ -1204,7 +1227,8 @@ class ChartAnalyzerUI:
             'cond2_lower': self.get_selected_lower_time('cond2'),
             'cond2_candle': self.cond2_candle.get(),
             'extract_type': self.extract_type.get(),
-            'extract_detail': self.extract_detail.get()
+            'extract_detail': self.extract_detail.get(),
+            'extract_condition': self.extract_condition.get()  # ★追加
         }
         self.current_analysis_info = info
         
@@ -2096,18 +2120,33 @@ class ChartAnalyzerUI:
 
     def analyze_width(self, df, detail):
         """幅の出現頻度を分析"""
+        # ★★★ 抽出内容条件を取得 ★★★
+        extract_condition = self.extract_condition.get()
+        
+        # ★★★ 抽出内容条件でデータをフィルタリング ★★★
+        filtered_df = df.copy()
+        if extract_condition == "陽線":
+            filtered_df = filtered_df[filtered_df['Close'] > filtered_df['Open']]
+        elif extract_condition == "陰線":
+            filtered_df = filtered_df[filtered_df['Close'] < filtered_df['Open']]
+        
+        if filtered_df.empty:
+            self.result_text.insert(tk.END, f"抽出内容条件（{extract_condition}）に合致するデータがありません。\n")
+            return
+        
+        # 幅を計算
         if detail == "実体":
-            widths = df['Close'] - df['Open']  # ★マイナスを保持
+            widths = filtered_df['Close'] - filtered_df['Open']  # マイナスを保持
         elif detail == "上幅":
-            widths = df['High'] - df[['Open', 'Close']].max(axis=1)
+            widths = filtered_df['High'] - filtered_df[['Open', 'Close']].max(axis=1)
         elif detail == "下幅":
-            widths = df[['Open', 'Close']].min(axis=1) - df['Low']
+            widths = filtered_df[['Open', 'Close']].min(axis=1) - filtered_df['Low']
         elif detail == "上髭":
-            widths = df['High'] - df[['Open', 'Close']].max(axis=1)
+            widths = filtered_df['High'] - filtered_df[['Open', 'Close']].max(axis=1)
         elif detail == "下髭":
-            widths = df[['Open', 'Close']].min(axis=1) - df['Low']
+            widths = filtered_df[['Open', 'Close']].min(axis=1) - filtered_df['Low']
         else:
-            widths = df['Close'] - df['Open']  # ★マイナスを保持
+            widths = filtered_df['Close'] - filtered_df['Open']  # マイナスを保持
         
         # 幅を小数点5桁で丸める
         widths = widths.round(5)
@@ -2116,25 +2155,94 @@ class ChartAnalyzerUI:
         counter = Counter(widths)
         total = len(widths)
         
-        # ★プラスとマイナスの集計
-        positive_count = len(widths[widths > 0])
-        negative_count = len(widths[widths < 0])
-        zero_count = len(widths[widths == 0])
+        # プラスとマイナスの集計
+        positive_widths = widths[widths > 0]
+        negative_widths = widths[widths < 0]
+        zero_widths = widths[widths == 0]
+        
+        positive_count = len(positive_widths)
+        negative_count = len(negative_widths)
+        zero_count = len(zero_widths)
+        
+        # プラスとマイナスの平均を計算
+        positive_mean = positive_widths.mean() if positive_count > 0 else 0
+        negative_mean = negative_widths.mean() if negative_count > 0 else 0
         
         result = f"【幅の出現頻度分析】\n"
         result += f"分析対象: {detail}\n"
+        if extract_condition != "なし":  # ★条件が設定されている場合は表示
+            result += f"抽出内容条件: {extract_condition}\n"
         result += f"総データ数: {total}\n"
-        result += f"プラス幅: {positive_count}件 ({positive_count/total*100:.2f}%)\n"
-        result += f"マイナス幅: {negative_count}件 ({negative_count/total*100:.2f}%)\n"
+        result += f"プラス幅: {positive_count}件 ({positive_count/total*100:.2f}%) 平均: {positive_mean:.5f}\n"
+        result += f"マイナス幅: {negative_count}件 ({negative_count/total*100:.2f}%) 平均: {negative_mean:.5f}\n"
         result += f"ゼロ幅: {zero_count}件 ({zero_count/total*100:.2f}%)\n"
         result += f"最小幅: {widths.min():.5f}\n"
         result += f"最大幅: {widths.max():.5f}\n"
-        result += f"平均幅: {widths.mean():.5f}\n"
+        result += f"全体平均幅: {widths.mean():.5f}\n"
         result += f"\n--- 出現頻度 (上位30件) ---\n"
         result += f"{'幅':<12} {'回数':<8} {'確率'}\n"
         result += "-" * 40 + "\n"
         
-        # ★マイナスの値も含めて頻度順にソート
+        # 統計情報を結果に追加（CSV出力用）
+        self.analysis_results.append({
+            '統計情報': '分析対象',
+            '値': detail,
+            '備考': extract_condition if extract_condition != "なし" else ''
+        })
+        self.analysis_results.append({
+            '統計情報': '総データ数',
+            '値': total,
+            '備考': ''
+        })
+        self.analysis_results.append({
+            '統計情報': 'プラス幅件数',
+            '値': positive_count,
+            '備考': f'{positive_count/total*100:.2f}%'
+        })
+        self.analysis_results.append({
+            '統計情報': 'プラス幅平均',
+            '値': round(positive_mean, 5),
+            '備考': ''
+        })
+        self.analysis_results.append({
+            '統計情報': 'マイナス幅件数',
+            '値': negative_count,
+            '備考': f'{negative_count/total*100:.2f}%'
+        })
+        self.analysis_results.append({
+            '統計情報': 'マイナス幅平均',
+            '値': round(negative_mean, 5),
+            '備考': ''
+        })
+        self.analysis_results.append({
+            '統計情報': 'ゼロ幅件数',
+            '値': zero_count,
+            '備考': f'{zero_count/total*100:.2f}%'
+        })
+        self.analysis_results.append({
+            '統計情報': '最小幅',
+            '値': round(widths.min(), 5),
+            '備考': ''
+        })
+        self.analysis_results.append({
+            '統計情報': '最大幅',
+            '値': round(widths.max(), 5),
+            '備考': ''
+        })
+        self.analysis_results.append({
+            '統計情報': '全体平均幅',
+            '値': round(widths.mean(), 5),
+            '備考': ''
+        })
+        
+        # 空行を追加（統計情報と頻度データの区切り）
+        self.analysis_results.append({
+            '統計情報': '',
+            '値': '',
+            '備考': ''
+        })
+        
+        # マイナスの値も含めて頻度順にソート
         for width, count in sorted(counter.items(), key=lambda x: x[1], reverse=True)[:30]:
             probability = count / total * 100
             result += f"{width:<12.5f} {count:<8} {probability:>6.2f}%\n"
@@ -2147,7 +2255,6 @@ class ChartAnalyzerUI:
             })
         
         self.result_text.insert(tk.END, result)
-
     def save_to_csv(self):
         """分析結果をCSVに保存"""
         if not self.analysis_results:
@@ -2227,6 +2334,9 @@ class ChartAnalyzerUI:
             extract_str = "陽線確率"
         else:
             extract_str = f"幅_{info['extract_detail']}"
+            # ★抽出内容条件を追加
+            if info.get('extract_condition', 'なし') != "なし":
+                extract_str += f"_{info['extract_condition']}"
         
         # ファイル名に使えない文字を置換
         target_str = target_str.replace(":", "-").replace("/", "-").replace("\\", "-")
