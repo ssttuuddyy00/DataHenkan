@@ -81,57 +81,47 @@ class ChartAnalyzerUI:
         cat2_frame = ttk.LabelFrame(main_frame, text="カテゴリ2: 対象", padding="10")
         cat2_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
-        # 次の足ボタン
+        # 次の足ボタン（変更なし）
         next_candle_frame = ttk.Frame(cat2_frame)
         next_candle_frame.grid(row=0, column=0, columnspan=4, sticky=tk.W, pady=5)
         ttk.Label(next_candle_frame, text="特殊:").pack(side=tk.LEFT)
-        self.next_candle_btn = ttk.Button(
-            next_candle_frame, text="次の足を設定", command=self.set_next_candle_target
-        )
+        self.next_candle_btn = ttk.Button(next_candle_frame, text="次の足を設定", command=self.set_next_candle_target)
         self.next_candle_btn.pack(side=tk.LEFT, padx=5)
 
         # 上位
         ttk.Label(cat2_frame, text="月:").grid(row=1, column=0, sticky=tk.W)
-        self.target_month = ttk.Combobox(
-            cat2_frame,
-            values=["なし", "全て", "個別全て"] + [f"{i}月" for i in range(1, 13)],
-            width=12,
-            state="readonly",
-        )
+        self.target_month = ttk.Combobox(cat2_frame, values=["なし", "全て", "個別全て"] + [f"{i}月" for i in range(1, 13)], width=12, state="readonly")
         self.target_month.grid(row=1, column=1, padx=5)
         self.target_month.current(0)
 
+        # ★★★ 曜日を追加 ★★★
+        ttk.Label(cat2_frame, text="曜日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0))
+        self.target_weekday = ttk.Combobox(cat2_frame, values=["なし", "個別全て", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"], width=12, state="readonly")
+        self.target_weekday.grid(row=1, column=3, padx=5)
+        self.target_weekday.current(0)
+
         # 中位
-        ttk.Label(cat2_frame, text="日:").grid(
-            row=1, column=2, sticky=tk.W, padx=(10, 0)
-        )
-        self.target_day = ttk.Combobox(
-            cat2_frame,
-            values=["なし", "全て", "個別全て"] + [f"{i}日" for i in range(1, 32)],
-            width=12,
-            state="readonly",
-        )
-        self.target_day.grid(row=1, column=3, padx=5)
+        ttk.Label(cat2_frame, text="日:").grid(row=2, column=0, sticky=tk.W)
+        self.target_day = ttk.Combobox(cat2_frame, values=["なし", "全て", "個別全て"] + [f"{i}日" for i in range(1, 32)], width=12, state="readonly")
+        self.target_day.grid(row=2, column=1, padx=5)
         self.target_day.current(0)
 
-        # 下位
-        ttk.Label(cat2_frame, text="セッション:").grid(
-            row=2, column=0, sticky=tk.W, pady=5
-        )
+        # 以降の下位時間足は行番号を1つずつ増やす（row=2→row=3, row=3→row=4, etc.）
+        ttk.Label(cat2_frame, text="セッション:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.target_session = ttk.Combobox(
             cat2_frame,
             values=["なし", "個別全て"] + list(self.sessions.keys()),
             width=12,
             state="readonly",
         )
-        self.target_session.grid(row=2, column=1, padx=5, pady=5)
+        self.target_session.grid(row=3, column=1, padx=5, pady=5)
         self.target_session.current(0)
         self.target_session.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
         )
 
         ttk.Label(cat2_frame, text="H4:").grid(
-            row=2, column=2, sticky=tk.W, padx=(10, 0), pady=5
+            row=3, column=2, sticky=tk.W, padx=(10, 0), pady=5
         )
         h4_values = ["なし", "個別全て"] + [
             f"{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)
@@ -139,37 +129,37 @@ class ChartAnalyzerUI:
         self.target_h4 = ttk.Combobox(
             cat2_frame, values=h4_values, width=15, state="readonly"
         )
-        self.target_h4.grid(row=2, column=3, padx=5, pady=5)
+        self.target_h4.grid(row=3, column=3, padx=5, pady=5)
         self.target_h4.current(0)
         self.target_h4.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
         )
 
-        ttk.Label(cat2_frame, text="H1:").grid(row=3, column=0, sticky=tk.W)
+        ttk.Label(cat2_frame, text="H1:").grid(row=4, column=0, sticky=tk.W)
         h1_values = ["なし", "個別全て"] + [
             f"{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)
         ]
         self.target_h1 = ttk.Combobox(
             cat2_frame, values=h1_values, width=15, state="readonly"
         )
-        self.target_h1.grid(row=3, column=1, padx=5)
+        self.target_h1.grid(row=4, column=1, padx=5)
         self.target_h1.current(0)
         self.target_h1.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
         )
 
-        ttk.Label(cat2_frame, text="M30:").grid(row=3, column=2, sticky=tk.W, padx=(10,0))
+        ttk.Label(cat2_frame, text="M30:").grid(row=4, column=2, sticky=tk.W, padx=(10,0))
         # ★★★ 個別H4、個別H1を追加 ★★★
         m30_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         m30_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
         m30_values = ["なし", "個別全て"] + m30_individual_h4 + m30_individual_h1 + \
                     [f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
         self.target_m30 = ttk.Combobox(cat2_frame, values=m30_values, width=15, state="readonly")
-        self.target_m30.grid(row=3, column=3, padx=5)
+        self.target_m30.grid(row=4, column=3, padx=5)
         self.target_m30.current(0)
         self.target_m30.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
 
-        ttk.Label(cat2_frame, text="M15:").grid(row=4, column=0, sticky=tk.W)
+        ttk.Label(cat2_frame, text="M15:").grid(row=5, column=0, sticky=tk.W)
         # ★★★ 個別H4、個別H1、個別M30を追加 ★★★
         m15_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         m15_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
@@ -177,11 +167,11 @@ class ChartAnalyzerUI:
         m15_values = ["なし", "個別全て"] + m15_individual_h4 + m15_individual_h1 + m15_individual_m30 + \
                     [f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}" for h in range(24) for m in [0, 15, 30, 45]]
         self.target_m15 = ttk.Combobox(cat2_frame, values=m15_values, width=15, state="readonly")
-        self.target_m15.grid(row=4, column=1, padx=5)
+        self.target_m15.grid(row=5, column=1, padx=5)
         self.target_m15.current(0)
         self.target_m15.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
 
-        ttk.Label(cat2_frame, text="M5:").grid(row=4, column=2, sticky=tk.W, padx=(10,0))
+        ttk.Label(cat2_frame, text="M5:").grid(row=5, column=2, sticky=tk.W, padx=(10,0))
         # ★★★ 個別H4、個別H1、個別M30、個別M15を追加 ★★★
         m5_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         m5_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
@@ -190,11 +180,11 @@ class ChartAnalyzerUI:
         m5_base_values = [f"{h:02d}:{m:02d}-{h:02d}:{m+5:02d}" for h in range(24) for m in range(0, 60, 5)]
         m5_values = ["なし", "個別全て"] + m5_individual_h4 + m5_individual_h1 + m5_individual_m30 + m5_individual_m15 + m5_base_values[:50]
         self.target_m5 = ttk.Combobox(cat2_frame, values=m5_values[:100], width=15, state="readonly")
-        self.target_m5.grid(row=4, column=3, padx=5)
+        self.target_m5.grid(row=5, column=3, padx=5)
         self.target_m5.current(0)
         self.target_m5.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
 
-        ttk.Label(cat2_frame, text="M1:").grid(row=5, column=0, sticky=tk.W)
+        ttk.Label(cat2_frame, text="M1:").grid(row=6, column=0, sticky=tk.W)
         # ★★★ 個別H4、個別H1、個別M30、個別M15、個別M5を追加 ★★★
         m1_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         m1_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
@@ -204,7 +194,7 @@ class ChartAnalyzerUI:
         m1_base_values = [f"{h:02d}:{m:02d}-{h:02d}:{m+1:02d}" for h in range(24) for m in range(60)]
         m1_values = ["なし", "個別全て"] + m1_individual_h4[:3] + m1_individual_h1[:10] + m1_individual_m30[:10] + m1_individual_m15[:10] + m1_individual_m5[:10] + m1_base_values[:50]
         self.target_m1 = ttk.Combobox(cat2_frame, values=m1_values[:100], width=15, state="readonly")
-        self.target_m1.grid(row=5, column=1, padx=5)
+        self.target_m1.grid(row=6, column=1, padx=5)
         self.target_m1.current(0)
         self.target_m1.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
 
@@ -212,55 +202,40 @@ class ChartAnalyzerUI:
         cat3_frame = ttk.LabelFrame(main_frame, text="カテゴリ3: 条件", padding="10")
         cat3_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
-        # ★★★ 連続ローソク足条件を追加（最初の行に配置） ★★★
+        # 連続条件（変更なし）
         ttk.Label(cat3_frame, text="連続条件:").grid(row=0, column=0, sticky=tk.W)
-        self.cond_consecutive = ttk.Combobox(
-            cat3_frame,
-            values=["なし", "1", "2", "3", "4", "5", "6"],
-            width=8,
-            state="readonly",
-        )
+        self.cond_consecutive = ttk.Combobox(cat3_frame, values=["なし", "1", "2", "3", "4", "5", "6"], width=8, state="readonly")
         self.cond_consecutive.grid(row=0, column=1, padx=5, sticky=tk.W)
         self.cond_consecutive.current(0)
 
-        ttk.Label(cat3_frame, text="本連続:").grid(
-            row=0, column=2, sticky=tk.W, padx=(0, 0)
-        )
-        self.cond_consecutive_type = ttk.Combobox(
-            cat3_frame, values=["陽線", "陰線"], width=8, state="readonly"
-        )
+        ttk.Label(cat3_frame, text="本連続:").grid(row=0, column=2, sticky=tk.W, padx=(0,0))
+        self.cond_consecutive_type = ttk.Combobox(cat3_frame, values=["陽線", "陰線"], width=8, state="readonly")
         self.cond_consecutive_type.grid(row=0, column=3, padx=5, sticky=tk.W)
         self.cond_consecutive_type.current(0)
 
-        # 上位（行番号を1から2に変更）
-        ttk.Label(cat3_frame, text="月:").grid(
-            row=1, column=0, sticky=tk.W, pady=(10, 0)
-        )
-        self.cond_month = ttk.Combobox(
-            cat3_frame,
-            values=["なし", "全て", "個別全て"] + [f"{i}月" for i in range(1, 13)],
-            width=12,
-            state="readonly",
-        )
-        self.cond_month.grid(row=1, column=1, padx=5, pady=(10, 0))
+        # 上位
+        ttk.Label(cat3_frame, text="月:").grid(row=1, column=0, sticky=tk.W, pady=(10,0))
+        self.cond_month = ttk.Combobox(cat3_frame, values=["なし", "全て", "個別全て"] + [f"{i}月" for i in range(1, 13)], width=12, state="readonly")
+        self.cond_month.grid(row=1, column=1, padx=5, pady=(10,0))
         self.cond_month.current(0)
 
+        # ★★★ 曜日を追加 ★★★
+        ttk.Label(cat3_frame, text="曜日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0), pady=(10,0))
+        self.cond_weekday = ttk.Combobox(cat3_frame, values=["なし", "個別全て", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"], width=12, state="readonly")
+        self.cond_weekday.grid(row=1, column=3, padx=5, pady=(10,0))
+        self.cond_weekday.current(0)
+
         # 中位
-        ttk.Label(cat3_frame, text="日:").grid(
-            row=1, column=2, sticky=tk.W, padx=(10, 0), pady=(10, 0)
-        )
-        self.cond_day = ttk.Combobox(
-            cat3_frame,
-            values=["なし", "全て", "個別全て"] + [f"{i}日" for i in range(1, 32)],
-            width=12,
-            state="readonly",
-        )
-        self.cond_day.grid(row=1, column=3, padx=5, pady=(10, 0))
+        ttk.Label(cat3_frame, text="日:").grid(row=2, column=0, sticky=tk.W)
+        self.cond_day = ttk.Combobox(cat3_frame, values=["なし", "全て", "個別全て"] + [f"{i}日" for i in range(1, 32)], width=12, state="readonly")
+        self.cond_day.grid(row=2, column=1, padx=5)
         self.cond_day.current(0)
+
+        # 以降の下位時間足は行番号を1つずつ増やす（row=2→row=3, row=3→row=4, etc.）
 
         # 下位（以降の行番号を1つずつ増やす）
         ttk.Label(cat3_frame, text="セッション:").grid(
-            row=2, column=0, sticky=tk.W, pady=5
+            row=3, column=0, sticky=tk.W, pady=5
         )
         self.cond_session = ttk.Combobox(
             cat3_frame,
@@ -268,14 +243,14 @@ class ChartAnalyzerUI:
             width=12,
             state="readonly",
         )
-        self.cond_session.grid(row=2, column=1, padx=5, pady=5)
+        self.cond_session.grid(row=3, column=1, padx=5, pady=5)
         self.cond_session.current(0)
         self.cond_session.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
         )
 
         ttk.Label(cat3_frame, text="H4:").grid(
-            row=2, column=2, sticky=tk.W, padx=(10, 0), pady=5
+            row=3, column=2, sticky=tk.W, padx=(10, 0), pady=5
         )
         h4_values_cond = ["なし", "個別全て"] + [
             f"{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)
@@ -283,27 +258,27 @@ class ChartAnalyzerUI:
         self.cond_h4 = ttk.Combobox(
             cat3_frame, values=h4_values_cond, width=15, state="readonly"
         )
-        self.cond_h4.grid(row=2, column=3, padx=5, pady=5)
+        self.cond_h4.grid(row=3, column=3, padx=5, pady=5)
         self.cond_h4.current(0)
         self.cond_h4.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
         )
 
-        ttk.Label(cat3_frame, text="H1:").grid(row=3, column=0, sticky=tk.W)
+        ttk.Label(cat3_frame, text="H1:").grid(row=4, column=0, sticky=tk.W)
         h1_values_cond = ["なし", "個別全て"] + [
             f"{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)
         ]
         self.cond_h1 = ttk.Combobox(
             cat3_frame, values=h1_values_cond, width=15, state="readonly"
         )
-        self.cond_h1.grid(row=3, column=1, padx=5)
+        self.cond_h1.grid(row=4, column=1, padx=5)
         self.cond_h1.current(0)
         self.cond_h1.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
         )
 
         ttk.Label(cat3_frame, text="M30:").grid(
-            row=3, column=2, sticky=tk.W, padx=(10, 0)
+            row=4, column=2, sticky=tk.W, padx=(10, 0)
         )
         m30_values_cond = ["なし", "個別全て"] + [
             f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]
@@ -311,13 +286,13 @@ class ChartAnalyzerUI:
         self.cond_m30 = ttk.Combobox(
             cat3_frame, values=m30_values_cond, width=15, state="readonly"
         )
-        self.cond_m30.grid(row=3, column=3, padx=5)
+        self.cond_m30.grid(row=4, column=3, padx=5)
         self.cond_m30.current(0)
         self.cond_m30.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
         )
 
-        ttk.Label(cat3_frame, text="M15:").grid(row=4, column=0, sticky=tk.W)
+        ttk.Label(cat3_frame, text="M15:").grid(row=5, column=0, sticky=tk.W)
         m15_values_cond = ["なし", "個別全て"] + [
             f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}"
             for h in range(24)
@@ -326,14 +301,14 @@ class ChartAnalyzerUI:
         self.cond_m15 = ttk.Combobox(
             cat3_frame, values=m15_values_cond, width=15, state="readonly"
         )
-        self.cond_m15.grid(row=4, column=1, padx=5)
+        self.cond_m15.grid(row=5, column=1, padx=5)
         self.cond_m15.current(0)
         self.cond_m15.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
         )
 
         ttk.Label(cat3_frame, text="M5:").grid(
-            row=4, column=2, sticky=tk.W, padx=(10, 0)
+            row=5, column=2, sticky=tk.W, padx=(10, 0)
         )
         m5_values_cond = ["なし", "個別全て"] + [
             f"{h:02d}:{m:02d}-{h:02d}:{m+5:02d}"
@@ -343,27 +318,27 @@ class ChartAnalyzerUI:
         self.cond_m5 = ttk.Combobox(
             cat3_frame, values=m5_values_cond[:50], width=15, state="readonly"
         )
-        self.cond_m5.grid(row=4, column=3, padx=5)
+        self.cond_m5.grid(row=5, column=3, padx=5)
         self.cond_m5.current(0)
         self.cond_m5.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
         )
 
-        ttk.Label(cat3_frame, text="M1:").grid(row=5, column=0, sticky=tk.W)
+        ttk.Label(cat3_frame, text="M1:").grid(row=6, column=0, sticky=tk.W)
         m1_values_cond = ["なし", "個別全て"] + [
             f"{h:02d}:{m:02d}-{h:02d}:{m+1:02d}" for h in range(24) for m in range(60)
         ]
         self.cond_m1 = ttk.Combobox(
             cat3_frame, values=m1_values_cond[:50], width=15, state="readonly"
         )
-        self.cond_m1.grid(row=5, column=1, padx=5)
+        self.cond_m1.grid(row=6, column=1, padx=5)
         self.cond_m1.current(0)
         self.cond_m1.bind(
             "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
         )
 
         ttk.Label(cat3_frame, text="陽線・陰線:").grid(
-            row=5, column=2, sticky=tk.W, padx=(10, 0)
+            row=6, column=2, sticky=tk.W, padx=(10, 0)
         )
         self.cond_candle = ttk.Combobox(
             cat3_frame,
@@ -371,13 +346,12 @@ class ChartAnalyzerUI:
             width=12,
             state="readonly",
         )
-        self.cond_candle.grid(row=5, column=3, padx=5)
+        self.cond_candle.grid(row=6, column=3, padx=5)
         self.cond_candle.current(0)
 
-        # ★★★ カテゴリ4: 条件(もう一つ過去) を追加 ★★★
+        # カテゴリ4: 条件(もう一つ過去)
         cat4_frame = ttk.LabelFrame(main_frame, text="カテゴリ4: 条件(もう一つ過去)", padding="10")
         cat4_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
-
         # 連続条件
         ttk.Label(cat4_frame, text="連続条件:").grid(row=0, column=0, sticky=tk.W)
         self.cond2_consecutive = ttk.Combobox(cat4_frame, values=["なし", "1", "2", "3", "4", "5", "6"], width=8, state="readonly")
@@ -389,70 +363,76 @@ class ChartAnalyzerUI:
         self.cond2_consecutive_type.grid(row=0, column=3, padx=5, sticky=tk.W)
         self.cond2_consecutive_type.current(0)
 
-        # 上位
+       # 上位
         ttk.Label(cat4_frame, text="月:").grid(row=1, column=0, sticky=tk.W, pady=(10,0))
         self.cond2_month = ttk.Combobox(cat4_frame, values=["なし", "全て", "個別全て"] + [f"{i}月" for i in range(1, 13)], width=12, state="readonly")
         self.cond2_month.grid(row=1, column=1, padx=5, pady=(10,0))
         self.cond2_month.current(0)
 
+        # ★★★ 曜日を追加 ★★★
+        ttk.Label(cat4_frame, text="曜日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0), pady=(10,0))
+        self.cond2_weekday = ttk.Combobox(cat4_frame, values=["なし", "個別全て", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"], width=12, state="readonly")
+        self.cond2_weekday.grid(row=1, column=3, padx=5, pady=(10,0))
+        self.cond2_weekday.current(0)
+
         # 中位
-        ttk.Label(cat4_frame, text="日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0), pady=(10,0))
+        ttk.Label(cat4_frame, text="日:").grid(row=2, column=2, sticky=tk.W, padx=(10,0), pady=(10,0))
         self.cond2_day = ttk.Combobox(cat4_frame, values=["なし", "全て", "個別全て"] + [f"{i}日" for i in range(1, 32)], width=12, state="readonly")
-        self.cond2_day.grid(row=1, column=3, padx=5, pady=(10,0))
+        self.cond2_day.grid(row=2, column=3, padx=5, pady=(10,0))
         self.cond2_day.current(0)
 
         # 下位
-        ttk.Label(cat4_frame, text="セッション:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        ttk.Label(cat4_frame, text="セッション:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.cond2_session = ttk.Combobox(cat4_frame, values=["なし", "個別全て"] + list(self.sessions.keys()), width=12, state="readonly")
-        self.cond2_session.grid(row=2, column=1, padx=5, pady=5)
+        self.cond2_session.grid(row=3, column=1, padx=5, pady=5)
         self.cond2_session.current(0)
         self.cond2_session.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
 
-        ttk.Label(cat4_frame, text="H4:").grid(row=2, column=2, sticky=tk.W, padx=(10,0), pady=5)
+        ttk.Label(cat4_frame, text="H4:").grid(row=3, column=2, sticky=tk.W, padx=(10,0), pady=5)
         h4_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         self.cond2_h4 = ttk.Combobox(cat4_frame, values=h4_values_cond2, width=15, state="readonly")
-        self.cond2_h4.grid(row=2, column=3, padx=5, pady=5)
+        self.cond2_h4.grid(row=3, column=3, padx=5, pady=5)
         self.cond2_h4.current(0)
         self.cond2_h4.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
 
-        ttk.Label(cat4_frame, text="H1:").grid(row=3, column=0, sticky=tk.W)
+        ttk.Label(cat4_frame, text="H1:").grid(row=4, column=0, sticky=tk.W)
         h1_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
         self.cond2_h1 = ttk.Combobox(cat4_frame, values=h1_values_cond2, width=15, state="readonly")
-        self.cond2_h1.grid(row=3, column=1, padx=5)
+        self.cond2_h1.grid(row=4, column=1, padx=5)
         self.cond2_h1.current(0)
         self.cond2_h1.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
 
-        ttk.Label(cat4_frame, text="M30:").grid(row=3, column=2, sticky=tk.W, padx=(10,0))
+        ttk.Label(cat4_frame, text="M30:").grid(row=4, column=2, sticky=tk.W, padx=(10,0))
         m30_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
         self.cond2_m30 = ttk.Combobox(cat4_frame, values=m30_values_cond2, width=15, state="readonly")
-        self.cond2_m30.grid(row=3, column=3, padx=5)
+        self.cond2_m30.grid(row=4, column=3, padx=5)
         self.cond2_m30.current(0)
         self.cond2_m30.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
 
-        ttk.Label(cat4_frame, text="M15:").grid(row=4, column=0, sticky=tk.W)
+        ttk.Label(cat4_frame, text="M15:").grid(row=5, column=0, sticky=tk.W)
         m15_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}" for h in range(24) for m in [0, 15, 30, 45]]
         self.cond2_m15 = ttk.Combobox(cat4_frame, values=m15_values_cond2, width=15, state="readonly")
-        self.cond2_m15.grid(row=4, column=1, padx=5)
+        self.cond2_m15.grid(row=5, column=1, padx=5)
         self.cond2_m15.current(0)
         self.cond2_m15.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
 
-        ttk.Label(cat4_frame, text="M5:").grid(row=4, column=2, sticky=tk.W, padx=(10,0))
+        ttk.Label(cat4_frame, text="M5:").grid(row=5, column=2, sticky=tk.W, padx=(10,0))
         m5_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+5:02d}" for h in range(24) for m in range(0, 60, 5)]
         self.cond2_m5 = ttk.Combobox(cat4_frame, values=m5_values_cond2[:50], width=15, state="readonly")
-        self.cond2_m5.grid(row=4, column=3, padx=5)
+        self.cond2_m5.grid(row=5, column=3, padx=5)
         self.cond2_m5.current(0)
         self.cond2_m5.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
 
-        ttk.Label(cat4_frame, text="M1:").grid(row=5, column=0, sticky=tk.W)
+        ttk.Label(cat4_frame, text="M1:").grid(row=6, column=0, sticky=tk.W)
         m1_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+1:02d}" for h in range(24) for m in range(60)]
         self.cond2_m1 = ttk.Combobox(cat4_frame, values=m1_values_cond2[:50], width=15, state="readonly")
-        self.cond2_m1.grid(row=5, column=1, padx=5)
+        self.cond2_m1.grid(row=6, column=1, padx=5)
         self.cond2_m1.current(0)
         self.cond2_m1.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
 
-        ttk.Label(cat4_frame, text="陽線・陰線:").grid(row=5, column=2, sticky=tk.W, padx=(10,0))
+        ttk.Label(cat4_frame, text="陽線・陰線:").grid(row=6, column=2, sticky=tk.W, padx=(10,0))
         self.cond2_candle = ttk.Combobox(cat4_frame, values=["なし", "個別全て", "陽線", "陰線"], width=12, state="readonly")
-        self.cond2_candle.grid(row=5, column=3, padx=5)
+        self.cond2_candle.grid(row=6, column=3, padx=5)
         self.cond2_candle.current(0)
 
         # 分析ボタンとCSV保存ボタン（rowを3から4に変更）
@@ -568,9 +548,10 @@ class ChartAnalyzerUI:
 
     def add_to_history(self):
         """現在の設定を履歴に追加"""
-        # 対象履歴（変更なし）
+        # 対象履歴
         target_info = {
             'month': self.target_month.get(),
+            'weekday': self.target_weekday.get(),  # ★追加
             'day': self.target_day.get(),
             'session': self.target_session.get(),
             'h4': self.target_h4.get(),
@@ -584,6 +565,8 @@ class ChartAnalyzerUI:
         target_parts = []
         if target_info['month'] != "なし":
             target_parts.append(target_info['month'])
+        if target_info['weekday'] != "なし":  # ★追加
+            target_parts.append(target_info['weekday'])
         if target_info['day'] != "なし":
             target_parts.append(target_info['day'])
         for key in ['session', 'h4', 'h1', 'm30', 'm15', 'm5', 'm1']:
@@ -601,6 +584,7 @@ class ChartAnalyzerUI:
             'consecutive': self.cond_consecutive.get(),
             'consecutive_type': self.cond_consecutive_type.get(),
             'month': self.cond_month.get(),
+            'weekday': self.cond_weekday.get(),  # ★追加
             'day': self.cond_day.get(),
             'session': self.cond_session.get(),
             'h4': self.cond_h4.get(),
@@ -618,6 +602,8 @@ class ChartAnalyzerUI:
         
         if cond_info['month'] != "なし":
             cond_parts.append(cond_info['month'])
+        if cond_info['weekday'] != "なし":  # ★追加
+            cond_parts.append(cond_info['weekday'])
         if cond_info['day'] != "なし":
             cond_parts.append(cond_info['day'])
         for key in ['session', 'h4', 'h1', 'm30', 'm15', 'm5', 'm1']:
@@ -632,7 +618,7 @@ class ChartAnalyzerUI:
             self.condition_history.insert(0, cond_info)
             self.condition_history = self.condition_history[:20]
         
-        # ★★★ 条件2履歴を追加 ★★★
+        # 条件2履歴
         if not hasattr(self, 'condition2_history'):
             self.condition2_history = []
         
@@ -640,6 +626,7 @@ class ChartAnalyzerUI:
             'consecutive': self.cond2_consecutive.get(),
             'consecutive_type': self.cond2_consecutive_type.get(),
             'month': self.cond2_month.get(),
+            'weekday': self.cond2_weekday.get(),  # ★追加
             'day': self.cond2_day.get(),
             'session': self.cond2_session.get(),
             'h4': self.cond2_h4.get(),
@@ -657,64 +644,65 @@ class ChartAnalyzerUI:
         
         self.save_history()
         self.update_history_display()
-
+    
     def update_history_display(self):
         """履歴表示を更新"""
-        # 対象履歴（変更なし）
+        # 対象履歴
         self.target_history_listbox.delete(0, tk.END)
         for item in self.target_history:
             parts = []
-            if item.get("next_candle", "なし") != "なし":
-                parts.append(item["next_candle"])
-            if item.get("month", "なし") != "なし":
-                parts.append(item["month"])
-            if item.get("day", "なし") != "なし":
-                parts.append(item["day"])
-            for key in ["session", "h4", "h1", "m30", "m15", "m5", "m1"]:
-                if item.get(key, "なし") != "なし":
+            if item.get('next_candle', 'なし') != "なし":
+                parts.append(item['next_candle'])
+            if item.get('month', 'なし') != "なし":
+                parts.append(item['month'])
+            if item.get('weekday', 'なし') != "なし":  # ★追加
+                parts.append(item['weekday'])
+            if item.get('day', 'なし') != "なし":
+                parts.append(item['day'])
+            for key in ['session', 'h4', 'h1', 'm30', 'm15', 'm5', 'm1']:
+                if item.get(key, 'なし') != "なし":
                     parts.append(item[key])
             display_str = " / ".join(parts) if parts else "未設定"
             self.target_history_listbox.insert(tk.END, display_str)
-
-        # 条件履歴 ★連続条件を追加
+        
+        # 条件履歴
         self.cond_history_listbox.delete(0, tk.END)
         for item in self.condition_history:
             parts = []
-            # ★連続条件を最初に表示
-            if item.get("consecutive", "なし") != "なし":
-                parts.append(
-                    f"{item['consecutive']}本連続{item.get('consecutive_type', '陽線')}"
-                )
-
-            if item.get("month", "なし") != "なし":
-                parts.append(item["month"])
-            if item.get("day", "なし") != "なし":
-                parts.append(item["day"])
-            for key in ["session", "h4", "h1", "m30", "m15", "m5", "m1"]:
-                if item.get(key, "なし") != "なし":
+            if item.get('consecutive', 'なし') != "なし":
+                parts.append(f"{item['consecutive']}本連続{item.get('consecutive_type', '陽線')}")
+            
+            if item.get('month', 'なし') != "なし":
+                parts.append(item['month'])
+            if item.get('weekday', 'なし') != "なし":  # ★追加
+                parts.append(item['weekday'])
+            if item.get('day', 'なし') != "なし":
+                parts.append(item['day'])
+            for key in ['session', 'h4', 'h1', 'm30', 'm15', 'm5', 'm1']:
+                if item.get(key, 'なし') != "なし":
                     parts.append(item[key])
-            if item.get("candle", "なし") != "なし":
-                parts.append(item["candle"])
+            if item.get('candle', 'なし') != "なし":
+                parts.append(item['candle'])
             display_str = " / ".join(parts) if parts else "未設定"
             self.cond_history_listbox.insert(tk.END, display_str)
-
+    
     def on_target_history_select(self, event):
         """対象履歴が選択された時の処理"""
         selection = self.target_history_listbox.curselection()
         if selection:
             idx = selection[0]
             item = self.target_history[idx]
-
-            # プルダウンに反映
-            self.set_combobox_value(self.target_month, item.get("month", "なし"))
-            self.set_combobox_value(self.target_day, item.get("day", "なし"))
-            self.set_combobox_value(self.target_session, item.get("session", "なし"))
-            self.set_combobox_value(self.target_h4, item.get("h4", "なし"))
-            self.set_combobox_value(self.target_h1, item.get("h1", "なし"))
-            self.set_combobox_value(self.target_m30, item.get("m30", "なし"))
-            self.set_combobox_value(self.target_m15, item.get("m15", "なし"))
-            self.set_combobox_value(self.target_m5, item.get("m5", "なし"))
-            self.set_combobox_value(self.target_m1, item.get("m1", "なし"))
+            
+            self.set_combobox_value(self.target_month, item.get('month', 'なし'))
+            self.set_combobox_value(self.target_weekday, item.get('weekday', 'なし'))  # ★追加
+            self.set_combobox_value(self.target_day, item.get('day', 'なし'))
+            self.set_combobox_value(self.target_session, item.get('session', 'なし'))
+            self.set_combobox_value(self.target_h4, item.get('h4', 'なし'))
+            self.set_combobox_value(self.target_h1, item.get('h1', 'なし'))
+            self.set_combobox_value(self.target_m30, item.get('m30', 'なし'))
+            self.set_combobox_value(self.target_m15, item.get('m15', 'なし'))
+            self.set_combobox_value(self.target_m5, item.get('m5', 'なし'))
+            self.set_combobox_value(self.target_m1, item.get('m1', 'なし'))
 
     def on_cond_history_select(self, event):
         """条件履歴が選択された時の処理"""
@@ -722,25 +710,21 @@ class ChartAnalyzerUI:
         if selection:
             idx = selection[0]
             item = self.condition_history[idx]
-
-            # プルダウンに反映
-            self.set_combobox_value(
-                self.cond_consecutive, item.get("consecutive", "なし")
-            )  # ★追加
-            self.set_combobox_value(
-                self.cond_consecutive_type, item.get("consecutive_type", "陽線")
-            )  # ★追加
-            self.set_combobox_value(self.cond_month, item.get("month", "なし"))
-            self.set_combobox_value(self.cond_day, item.get("day", "なし"))
-            self.set_combobox_value(self.cond_session, item.get("session", "なし"))
-            self.set_combobox_value(self.cond_h4, item.get("h4", "なし"))
-            self.set_combobox_value(self.cond_h1, item.get("h1", "なし"))
-            self.set_combobox_value(self.cond_m30, item.get("m30", "なし"))
-            self.set_combobox_value(self.cond_m15, item.get("m15", "なし"))
-            self.set_combobox_value(self.cond_m5, item.get("m5", "なし"))
-            self.set_combobox_value(self.cond_m1, item.get("m1", "なし"))
-            self.set_combobox_value(self.cond_candle, item.get("candle", "なし"))
-
+            
+            self.set_combobox_value(self.cond_consecutive, item.get('consecutive', 'なし'))
+            self.set_combobox_value(self.cond_consecutive_type, item.get('consecutive_type', '陽線'))
+            self.set_combobox_value(self.cond_month, item.get('month', 'なし'))
+            self.set_combobox_value(self.cond_weekday, item.get('weekday', 'なし'))  # ★追加
+            self.set_combobox_value(self.cond_day, item.get('day', 'なし'))
+            self.set_combobox_value(self.cond_session, item.get('session', 'なし'))
+            self.set_combobox_value(self.cond_h4, item.get('h4', 'なし'))
+            self.set_combobox_value(self.cond_h1, item.get('h1', 'なし'))
+            self.set_combobox_value(self.cond_m30, item.get('m30', 'なし'))
+            self.set_combobox_value(self.cond_m15, item.get('m15', 'なし'))
+            self.set_combobox_value(self.cond_m5, item.get('m5', 'なし'))
+            self.set_combobox_value(self.cond_m1, item.get('m1', 'なし'))
+            self.set_combobox_value(self.cond_candle, item.get('candle', 'なし'))
+    
     def set_combobox_value(self, combobox, value):
         """Comboboxに値を設定"""
         if value in combobox["values"]:
@@ -1048,51 +1032,68 @@ class ChartAnalyzerUI:
                 return (name, value)
         return None
 
-    def filter_data(self, df, month, day, lower_time, candle_type):
+    def filter_data(self, df, month, day, lower_time, candle_type, weekday=None):
         """データをフィルタリング"""
         if df is None or df.empty:
             return df
-
+        
         filtered = df.copy()
-
+        
         # 月フィルタ
-        if month != "なし" and "Month" in df.columns:
+        if month != "なし" and 'Month' in df.columns:
             if month == "全て":
                 pass
             else:
                 month_num = int(month.replace("月", ""))
-                filtered = filtered[filtered["Month"] == month_num]
-
+                filtered = filtered[filtered['Month'] == month_num]
+        
+        # ★★★ 曜日フィルタを追加 ★★★
+        if weekday and weekday != "なし" and 'Weekday' in df.columns:
+            weekday_map = {
+                "月曜": 0,
+                "火曜": 1,
+                "水曜": 2,
+                "木曜": 3,
+                "金曜": 4,
+                "土曜": 5,
+                "日曜": 6
+            }
+            if weekday in weekday_map:
+                weekday_num = weekday_map[weekday]
+                filtered = filtered[filtered['Weekday'] == weekday_num]
+        
         # 日フィルタ
-        if day != "なし" and "Day" in df.columns:
+        if day != "なし" and 'Day' in df.columns:
             if day == "全て":
                 pass
             else:
                 day_num = int(day.replace("日", ""))
-                filtered = filtered[filtered["Day"] == day_num]
-
+                filtered = filtered[filtered['Day'] == day_num]
+        
         # 下位時間フィルタ
         if lower_time:
             time_type, time_value = lower_time
-            if time_type == "セッション" and "Session" in df.columns:
-                filtered = filtered[filtered["Session"] == time_value]
-            elif "TimeRange" in df.columns:
-                filtered = filtered[filtered["TimeRange"] == time_value]
-
+            if time_type == "セッション" and 'Session' in df.columns:
+                filtered = filtered[filtered['Session'] == time_value]
+            elif 'TimeRange' in df.columns:
+                filtered = filtered[filtered['TimeRange'] == time_value]
+        
         # 陽線・陰線フィルタ
         if candle_type == "陽線":
-            filtered = filtered[filtered["Close"] > filtered["Open"]]
+            filtered = filtered[filtered['Close'] > filtered['Open']]
         elif candle_type == "陰線":
-            filtered = filtered[filtered["Close"] < filtered["Open"]]
-
+            filtered = filtered[filtered['Close'] < filtered['Open']]
+        
         return filtered
-
+    
     def get_individual_all_values(self, filter_type, combo_widget):
         """個別全ての場合に使用する全ての値のリストを取得"""
         values = []
-
+        
         if filter_type == "月":
             values = [f"{i}月" for i in range(1, 13)]
+        elif filter_type == "曜日":
+            values = ["月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"]
         elif filter_type == "日":
             values = [f"{i}日" for i in range(1, 32)]
         elif filter_type == "セッション":
@@ -1102,32 +1103,16 @@ class ChartAnalyzerUI:
         elif filter_type == "H1":
             values = [f"{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
         elif filter_type == "M30":
-            values = [
-                f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}"
-                for h in range(24)
-                for m in [0, 30]
-            ]
+            values = [f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
         elif filter_type == "M15":
-            values = [
-                f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}"
-                for h in range(24)
-                for m in [0, 15, 30, 45]
-            ]
+            values = [f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}" for h in range(24) for m in [0, 15, 30, 45]]
         elif filter_type == "M5":
-            values = [
-                f"{h:02d}:{m:02d}-{h:02d}:{m+5:02d}"
-                for h in range(24)
-                for m in range(0, 60, 5)
-            ]
+            values = [f"{h:02d}:{m:02d}-{h:02d}:{m+5:02d}" for h in range(24) for m in range(0, 60, 5)]
         elif filter_type == "M1":
-            values = [
-                f"{h:02d}:{m:02d}-{h:02d}:{m+1:02d}"
-                for h in range(24)
-                for m in range(60)
-            ]
+            values = [f"{h:02d}:{m:02d}-{h:02d}:{m+1:02d}" for h in range(24) for m in range(60)]
         elif filter_type == "陽線・陰線":
             values = ["陽線", "陰線"]
-
+        
         return values
     
     def parse_individual_timeframe(self, value):
@@ -1199,6 +1184,7 @@ class ChartAnalyzerUI:
         
         # 対象の選択を確認
         target_month = self.target_month.get()
+        target_weekday = self.target_weekday.get()
         target_day = self.target_day.get()
         target_lower = self.get_selected_lower_time('target')
         
@@ -1209,17 +1195,20 @@ class ChartAnalyzerUI:
         # ★★★ 分析情報を先に構築（既存ファイル検索用） ★★★
         info = {
             'target_month': target_month,
+            'target_weekday': target_weekday,  # ★追加
             'target_day': target_day,
             'target_lower': target_lower,
             'cond_consecutive': self.cond_consecutive.get(),
             'cond_consecutive_type': self.cond_consecutive_type.get(),
             'cond_month': self.cond_month.get(),
+            'cond_weekday': cond_weekday,  # ★追加
             'cond_day': self.cond_day.get(),
             'cond_lower': self.get_selected_lower_time('cond'),
             'cond_candle': self.cond_candle.get(),
             'cond2_consecutive': self.cond2_consecutive.get(),
             'cond2_consecutive_type': self.cond2_consecutive_type.get(),
             'cond2_month': self.cond2_month.get(),
+            'cond2_weekday': self.cond2_weekday.get(),  # ★追加
             'cond2_day': self.cond2_day.get(),
             'cond2_lower': self.get_selected_lower_time('cond2'),
             'cond2_candle': self.cond2_candle.get(),
@@ -1375,12 +1364,15 @@ class ChartAnalyzerUI:
         target_individual_all = None
         if target_month == "個別全て":
             target_individual_all = ("月", self.get_individual_all_values("月", self.target_month))
+        elif target_weekday == "個別全て":
+            target_individual_all = ("曜日", self.get_individual_all_values("曜日", self.target_weekday))
         elif target_day == "個別全て":
             target_individual_all = ("日", self.get_individual_all_values("日", self.target_day))
         elif target_lower and target_lower[1] == "個別全て":
             target_individual_all = (target_lower[0], self.get_individual_all_values(target_lower[0], None))
         
         cond_month = self.cond_month.get()
+        cond_weekday = self.cond_weekday.get()
         cond_day = self.cond_day.get()
         cond_lower = self.get_selected_lower_time('cond')
         cond_candle = self.cond_candle.get()
@@ -1388,6 +1380,8 @@ class ChartAnalyzerUI:
         cond_individual_all = None
         if cond_month == "個別全て":
             cond_individual_all = ("月", self.get_individual_all_values("月", self.cond_month))
+        elif cond_weekday == "個別全て":
+            cond_individual_all = ("曜日", self.get_individual_all_values("曜日", self.cond_weekday))
         elif cond_day == "個別全て":
             cond_individual_all = ("日", self.get_individual_all_values("日", self.cond_day))
         elif cond_lower and cond_lower[1] == "個別全て":
@@ -1610,7 +1604,7 @@ class ChartAnalyzerUI:
                 self.result_text.insert(tk.END, f"条件2の連続条件に合致: {len(cond2_df)}行\n")
             
             # 条件2のフィルタを適用
-            condition2_filtered = self.filter_data(cond2_df, cond2_month, cond2_day, cond2_lower, cond2_candle)
+            condition2_filtered = self.filter_data(cond2_df, cond2_month, cond2_day, cond2_lower, cond2_candle, cond2_weekday)
             
             if condition2_filtered.empty:
                 self.result_text.insert(tk.END, "条件2に合致するデータがありません。\n\n")
@@ -1655,8 +1649,7 @@ class ChartAnalyzerUI:
                 self.result_text.insert(tk.END, f"条件1の連続条件に合致: {len(cond_df)}行\n")
             
             # 条件1のフィルタを適用
-            condition_filtered = self.filter_data(cond_df, cond_month, cond_day, cond_lower, cond_candle)
-            
+            condition_filtered = self.filter_data(cond_df, cond_month, cond_day, cond_lower, cond_candle, cond_weekday)            
             if condition_filtered.empty:
                 self.result_text.insert(tk.END, "条件1に合致するデータがありません。\n\n")
                 return
@@ -1686,8 +1679,7 @@ class ChartAnalyzerUI:
             result_df = target_df
         
         # 対象フィルタを適用
-        result_df = self.filter_data(result_df, target_month, target_day, target_lower, "なし")
-        
+        result_df = self.filter_data(result_df, target_month, target_day, target_lower, "なし", target_weekday)        
         if result_df.empty:
             self.result_text.insert(tk.END, "フィルタ後の対象データが見つかりません。\n\n")
             return
@@ -2189,6 +2181,8 @@ class ChartAnalyzerUI:
         target_parts = []
         if info['target_month'] != "なし":
             target_parts.append(f"月:{info['target_month']}")
+        if info.get('target_weekday', 'なし') != "なし":  # ★追加
+            target_parts.append(f"曜日:{info['target_weekday']}")
         if info['target_day'] != "なし":
             target_parts.append(f"日:{info['target_day']}")
         if info['target_lower']:
@@ -2202,6 +2196,8 @@ class ChartAnalyzerUI:
             cond2_parts.append(f"連続条件:{info['cond2_consecutive']}本{info.get('cond2_consecutive_type', '陽線')}")
         if info.get('cond2_month', 'なし') != "なし":
             cond2_parts.append(f"月:{info['cond2_month']}")
+        if info.get('cond2_weekday', 'なし') != "なし":
+            cond2_parts.append(f"曜日:{info['cond2_weekday']}")
         if info.get('cond2_day', 'なし') != "なし":
             cond2_parts.append(f"日:{info['cond2_day']}")
         if info.get('cond2_lower'):
@@ -2216,6 +2212,8 @@ class ChartAnalyzerUI:
             cond_parts.append(f"連続条件:{info['cond_consecutive']}本{info.get('cond_consecutive_type', '陽線')}")
         if info['cond_month'] != "なし":
             cond_parts.append(f"月:{info['cond_month']}")
+        if info.get('cond_weekday', 'なし') != "なし":
+            cond_parts.append(f"曜日:{info['cond_weekday']}")
         if info['cond_day'] != "なし":
             cond_parts.append(f"日:{info['cond_day']}")
         if info['cond_lower']:
