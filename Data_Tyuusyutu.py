@@ -1364,12 +1364,12 @@ class ChartAnalyzerUI:
         target_individual_all = None
         if target_month == "個別全て":
             target_individual_all = ("月", self.get_individual_all_values("月", self.target_month))
-        elif target_weekday == "個別全て":
-            target_individual_all = ("曜日", self.get_individual_all_values("曜日", self.target_weekday))
         elif target_day == "個別全て":
             target_individual_all = ("日", self.get_individual_all_values("日", self.target_day))
         elif target_lower and target_lower[1] == "個別全て":
             target_individual_all = (target_lower[0], self.get_individual_all_values(target_lower[0], None))
+        if target_weekday == "個別全て":
+            target_individual_all = ("曜日", self.get_individual_all_values("曜日", self.target_weekday))
         
         cond_month = self.cond_month.get()
         cond_weekday = self.cond_weekday.get()
@@ -1380,14 +1380,14 @@ class ChartAnalyzerUI:
         cond_individual_all = None
         if cond_month == "個別全て":
             cond_individual_all = ("月", self.get_individual_all_values("月", self.cond_month))
-        elif cond_weekday == "個別全て":
-            cond_individual_all = ("曜日", self.get_individual_all_values("曜日", self.cond_weekday))
         elif cond_day == "個別全て":
             cond_individual_all = ("日", self.get_individual_all_values("日", self.cond_day))
         elif cond_lower and cond_lower[1] == "個別全て":
             cond_individual_all = (cond_lower[0], self.get_individual_all_values(cond_lower[0], None))
         elif cond_candle == "個別全て":
             cond_individual_all = ("陽線・陰線", self.get_individual_all_values("陽線・陰線", self.cond_candle))
+        if cond_weekday == "個別全て":
+            cond_individual_all = ("曜日", self.get_individual_all_values("曜日", self.cond_weekday))
         
         # 個別全ての場合、それぞれの値について分析を実行
         if target_individual_all:
