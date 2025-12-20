@@ -1047,20 +1047,11 @@ class ChartAnalyzerUI:
                 month_num = int(month.replace("月", ""))
                 filtered = filtered[filtered['Month'] == month_num]
         
-        # ★★★ 曜日フィルタを追加 ★★★
+        # ★★★ 曜日フィルタを修正（文字列で比較） ★★★
         if weekday and weekday != "なし" and 'Weekday' in df.columns:
-            weekday_map = {
-                "月曜": 0,
-                "火曜": 1,
-                "水曜": 2,
-                "木曜": 3,
-                "金曜": 4,
-                "土曜": 5,
-                "日曜": 6
-            }
-            if weekday in weekday_map:
-                weekday_num = weekday_map[weekday]
-                filtered = filtered[filtered['Weekday'] == weekday_num]
+            # プルダウンの値（"月曜"）を CSVの値（"月曜日"）に変換
+            weekday_csv = weekday + "日"  # "月曜" -> "月曜日"
+            filtered = filtered[filtered['Weekday'] == weekday_csv]
         
         # 日フィルタ
         if day != "なし" and 'Day' in df.columns:
