@@ -78,6 +78,13 @@ class ChartAnalyzerUI:
         self.extract_detail = ttk.Combobox(cat1_frame, values=["上幅", "下幅", "実体", "上髭", "下髭"], width=15, state="readonly")
         self.extract_detail.grid(row=1, column=1, padx=5, pady=5)
         self.extract_detail.current(2)
+        self.extract_detail.bind("<<ComboboxSelected>>", self.on_extract_detail_change)
+        
+        # ★★★ 抽出内容条件を追加 ★★★
+        ttk.Label(cat1_frame, text="抽出内容条件:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.extract_condition = ttk.Combobox(cat1_frame, values=["なし", "陽線", "陰線"], width=15, state="disabled")
+        self.extract_condition.grid(row=2, column=1, padx=5, pady=5)
+        self.extract_condition.current(0)
         
         # カテゴリ2: 対象（左側）
         cat2_frame = ttk.LabelFrame(left_frame, text="カテゴリ2: 対象", padding="10")
@@ -1108,7 +1115,7 @@ class ChartAnalyzerUI:
             'cond_consecutive': self.cond_consecutive.get(),
             'cond_consecutive_type': self.cond_consecutive_type.get(),
             'cond_month': self.cond_month.get(),
-            'cond_weekday': cond_weekday,  # ★追加
+            'cond_weekday': self.cond_weekday,  # ★追加
             'cond_day': self.cond_day.get(),
             'cond_lower': self.get_selected_lower_time('cond'),
             'cond_candle': self.cond_candle.get(),
@@ -1353,6 +1360,11 @@ class ChartAnalyzerUI:
         cond2_day = self.cond2_day.get()
         cond2_lower = self.get_selected_lower_time('cond2')
         
+        # ★★★ 曜日を取得 ★★★
+        target_weekday = self.target_weekday.get()
+        cond_weekday = self.cond_weekday.get()
+        cond2_weekday = self.cond2_weekday.get()
+        
         # ★★★ 対象用のデータファイルを読み込む ★★★
         target_file_path = self.get_file_path(target_month, target_day, target_lower)
         
@@ -1431,20 +1443,23 @@ class ChartAnalyzerUI:
                 temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
                 temp_cond_candle = value if filter_type == "陽線・陰線" else cond_candle
                 
+                # ★曜日を追加
                 self.process_with_separate_conditions(target_df, cond_df, cond2_df,
                                                     target_month, target_day, target_lower,
                                                     temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
                                                     cond_consecutive, cond_consecutive_type,
                                                     cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
-                                                    cond2_lower, cond2_candle)
+                                                    cond2_lower, cond2_candle,
+                                                    target_weekday, temp_cond_weekday, cond2_weekday)
         else:
-            # 通常処理
+            # 通常処理 ★曜日を追加
             self.process_with_separate_conditions(target_df, cond_df, cond2_df,
                                                 target_month, target_day, target_lower,
                                                 cond_month, cond_day, cond_lower, cond_candle,
                                                 cond_consecutive, cond_consecutive_type,
                                                 cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
-                                                cond2_lower, cond2_candle)
+                                                cond2_lower, cond2_candle,
+                                                target_weekday, cond_weekday, cond2_weekday)
         
     def search_existing_csv(self, target_str, cond_str, extract_str):
         """既存のCSVファイルを検索"""
@@ -1483,7 +1498,8 @@ class ChartAnalyzerUI:
                                      cond_month, cond_day, cond_lower, cond_candle,
                                      cond_consecutive, cond_consecutive_type,
                                      cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day,
-                                     cond2_lower, cond2_candle):
+                                     cond2_lower, cond2_candle,
+                                     target_weekday, cond_weekday, cond2_weekday):
         """条件と対象を別々のデータファイルから処理"""
         
         # ★★★ 条件2の処理 ★★★
