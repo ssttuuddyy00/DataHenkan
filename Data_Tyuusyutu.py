@@ -47,118 +47,88 @@ class ChartAnalyzerUI:
         self.setup_ui()
 
     def setup_ui(self):
-        # メインフレーム
+        # メインフレームを2列構造に変更
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
-        # カテゴリ1: 抽出内容
-        cat1_frame = ttk.LabelFrame(
-            main_frame, text="カテゴリ1: 抽出内容", padding="10"
-        )
-        cat1_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
-
+        
+        # ★★★ 左側フレーム（設定項目） ★★★
+        left_frame = ttk.Frame(main_frame)
+        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        
+        # ★★★ 右側フレーム（結果表示・履歴） ★★★
+        right_frame = ttk.Frame(main_frame)
+        right_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # グリッドの重み付け
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(0, weight=1)
+        
+        # カテゴリ1: 抽出内容（左側）
+        cat1_frame = ttk.LabelFrame(left_frame, text="カテゴリ1: 抽出内容", padding="10")
+        cat1_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5)
+        
         ttk.Label(cat1_frame, text="抽出内容:").grid(row=0, column=0, sticky=tk.W)
-        self.extract_type = ttk.Combobox(
-            cat1_frame, values=["幅", "陽線確率"], width=15, state="readonly"
-        )
+        self.extract_type = ttk.Combobox(cat1_frame, values=["幅", "陽線確率"], width=15, state="readonly")
         self.extract_type.grid(row=0, column=1, padx=5)
         self.extract_type.current(0)
         self.extract_type.bind("<<ComboboxSelected>>", self.on_extract_type_change)
-
-        ttk.Label(cat1_frame, text="抽出内容詳細:").grid(
-            row=1, column=0, sticky=tk.W, pady=5
-        )
-        self.extract_detail = ttk.Combobox(
-            cat1_frame,
-            values=["上幅", "下幅", "実体", "上髭", "下髭"],
-            width=15,
-            state="readonly",
-        )
+        
+        ttk.Label(cat1_frame, text="抽出内容詳細:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.extract_detail = ttk.Combobox(cat1_frame, values=["上幅", "下幅", "実体", "上髭", "下髭"], width=15, state="readonly")
         self.extract_detail.grid(row=1, column=1, padx=5, pady=5)
         self.extract_detail.current(2)
-        self.extract_detail.bind("<<ComboboxSelected>>", self.on_extract_detail_change)
-
-
-        # ★★★ 抽出内容条件を追加 ★★★
-        ttk.Label(cat1_frame, text="抽出内容条件:").grid(row=2, column=0, sticky=tk.W, pady=5)
-        self.extract_condition = ttk.Combobox(cat1_frame, values=["なし", "陽線", "陰線"], width=15, state="disabled")
-        self.extract_condition.grid(row=2, column=1, padx=5, pady=5)
-        self.extract_condition.current(0)
         
-
-        # カテゴリ2: 対象
-        cat2_frame = ttk.LabelFrame(main_frame, text="カテゴリ2: 対象", padding="10")
-        cat2_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
-
-        # 次の足ボタン（変更なし）
+        # カテゴリ2: 対象（左側）
+        cat2_frame = ttk.LabelFrame(left_frame, text="カテゴリ2: 対象", padding="10")
+        cat2_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
+        
+        # 次の足ボタン
         next_candle_frame = ttk.Frame(cat2_frame)
         next_candle_frame.grid(row=0, column=0, columnspan=4, sticky=tk.W, pady=5)
         ttk.Label(next_candle_frame, text="特殊:").pack(side=tk.LEFT)
         self.next_candle_btn = ttk.Button(next_candle_frame, text="次の足を設定", command=self.set_next_candle_target)
         self.next_candle_btn.pack(side=tk.LEFT, padx=5)
-
+        
         # 上位
         ttk.Label(cat2_frame, text="月:").grid(row=1, column=0, sticky=tk.W)
         self.target_month = ttk.Combobox(cat2_frame, values=["なし", "全て", "個別全て"] + [f"{i}月" for i in range(1, 13)], width=12, state="readonly")
         self.target_month.grid(row=1, column=1, padx=5)
         self.target_month.current(0)
-
-        # ★★★ 曜日を追加 ★★★
+        
         ttk.Label(cat2_frame, text="曜日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0))
         self.target_weekday = ttk.Combobox(cat2_frame, values=["なし", "個別全て", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"], width=12, state="readonly")
         self.target_weekday.grid(row=1, column=3, padx=5)
         self.target_weekday.current(0)
-
+        
         # 中位
         ttk.Label(cat2_frame, text="日:").grid(row=2, column=0, sticky=tk.W)
         self.target_day = ttk.Combobox(cat2_frame, values=["なし", "全て", "個別全て"] + [f"{i}日" for i in range(1, 32)], width=12, state="readonly")
         self.target_day.grid(row=2, column=1, padx=5)
         self.target_day.current(0)
-
-        # 以降の下位時間足は行番号を1つずつ増やす（row=2→row=3, row=3→row=4, etc.）
+        
+        # 下位
         ttk.Label(cat2_frame, text="セッション:").grid(row=3, column=0, sticky=tk.W, pady=5)
-        self.target_session = ttk.Combobox(
-            cat2_frame,
-            values=["なし", "個別全て"] + list(self.sessions.keys()),
-            width=12,
-            state="readonly",
-        )
+        self.target_session = ttk.Combobox(cat2_frame, values=["なし", "個別全て"] + list(self.sessions.keys()), width=12, state="readonly")
         self.target_session.grid(row=3, column=1, padx=5, pady=5)
         self.target_session.current(0)
-        self.target_session.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
-        )
-
-        ttk.Label(cat2_frame, text="H4:").grid(
-            row=3, column=2, sticky=tk.W, padx=(10, 0), pady=5
-        )
-        h4_values = ["なし", "個別全て"] + [
-            f"{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)
-        ]
-        self.target_h4 = ttk.Combobox(
-            cat2_frame, values=h4_values, width=15, state="readonly"
-        )
+        self.target_session.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
+        
+        ttk.Label(cat2_frame, text="H4:").grid(row=3, column=2, sticky=tk.W, padx=(10,0), pady=5)
+        h4_values = ["なし", "個別全て"] + [f"{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
+        self.target_h4 = ttk.Combobox(cat2_frame, values=h4_values, width=15, state="readonly")
         self.target_h4.grid(row=3, column=3, padx=5, pady=5)
         self.target_h4.current(0)
-        self.target_h4.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
-        )
-
+        self.target_h4.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
+        
         ttk.Label(cat2_frame, text="H1:").grid(row=4, column=0, sticky=tk.W)
-        h1_values = ["なし", "個別全て"] + [
-            f"{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)
-        ]
-        self.target_h1 = ttk.Combobox(
-            cat2_frame, values=h1_values, width=15, state="readonly"
-        )
+        h1_values = ["なし", "個別全て"] + [f"{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
+        self.target_h1 = ttk.Combobox(cat2_frame, values=h1_values, width=15, state="readonly")
         self.target_h1.grid(row=4, column=1, padx=5)
         self.target_h1.current(0)
-        self.target_h1.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "target")
-        )
-
+        self.target_h1.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
+        
         ttk.Label(cat2_frame, text="M30:").grid(row=4, column=2, sticky=tk.W, padx=(10,0))
-        # ★★★ 個別H4、個別H1を追加 ★★★
         m30_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         m30_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
         m30_values = ["なし", "個別全て"] + m30_individual_h4 + m30_individual_h1 + \
@@ -167,9 +137,8 @@ class ChartAnalyzerUI:
         self.target_m30.grid(row=4, column=3, padx=5)
         self.target_m30.current(0)
         self.target_m30.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
-
+        
         ttk.Label(cat2_frame, text="M15:").grid(row=5, column=0, sticky=tk.W)
-        # ★★★ 個別H4、個別H1、個別M30を追加 ★★★
         m15_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         m15_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
         m15_individual_m30 = [f"個別M30_{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
@@ -179,9 +148,8 @@ class ChartAnalyzerUI:
         self.target_m15.grid(row=5, column=1, padx=5)
         self.target_m15.current(0)
         self.target_m15.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
-
+        
         ttk.Label(cat2_frame, text="M5:").grid(row=5, column=2, sticky=tk.W, padx=(10,0))
-        # ★★★ 個別H4、個別H1、個別M30、個別M15を追加 ★★★
         m5_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         m5_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
         m5_individual_m30 = [f"個別M30_{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
@@ -192,9 +160,8 @@ class ChartAnalyzerUI:
         self.target_m5.grid(row=5, column=3, padx=5)
         self.target_m5.current(0)
         self.target_m5.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
-
+        
         ttk.Label(cat2_frame, text="M1:").grid(row=6, column=0, sticky=tk.W)
-        # ★★★ 個別H4、個別H1、個別M30、個別M15、個別M5を追加 ★★★
         m1_individual_h4 = [f"個別H4_{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         m1_individual_h1 = [f"個別H1_{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
         m1_individual_m30 = [f"個別M30_{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
@@ -206,218 +173,153 @@ class ChartAnalyzerUI:
         self.target_m1.grid(row=6, column=1, padx=5)
         self.target_m1.current(0)
         self.target_m1.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'target'))
-
-        # カテゴリ3: 条件
-        cat3_frame = ttk.LabelFrame(main_frame, text="カテゴリ3: 条件", padding="10")
-        cat3_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
-
-        # 連続条件（変更なし）
+        
+        # カテゴリ3: 条件（左側）
+        cat3_frame = ttk.LabelFrame(left_frame, text="カテゴリ3: 条件", padding="10")
+        cat3_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5)
+        
+        # 連続条件
         ttk.Label(cat3_frame, text="連続条件:").grid(row=0, column=0, sticky=tk.W)
         self.cond_consecutive = ttk.Combobox(cat3_frame, values=["なし", "1", "2", "3", "4", "5", "6"], width=8, state="readonly")
         self.cond_consecutive.grid(row=0, column=1, padx=5, sticky=tk.W)
         self.cond_consecutive.current(0)
-
+        
         ttk.Label(cat3_frame, text="本連続:").grid(row=0, column=2, sticky=tk.W, padx=(0,0))
         self.cond_consecutive_type = ttk.Combobox(cat3_frame, values=["陽線", "陰線"], width=8, state="readonly")
         self.cond_consecutive_type.grid(row=0, column=3, padx=5, sticky=tk.W)
         self.cond_consecutive_type.current(0)
-
+        
         # 上位
         ttk.Label(cat3_frame, text="月:").grid(row=1, column=0, sticky=tk.W, pady=(10,0))
         self.cond_month = ttk.Combobox(cat3_frame, values=["なし", "全て", "個別全て"] + [f"{i}月" for i in range(1, 13)], width=12, state="readonly")
         self.cond_month.grid(row=1, column=1, padx=5, pady=(10,0))
         self.cond_month.current(0)
-
-        # ★★★ 曜日を追加 ★★★
+        
         ttk.Label(cat3_frame, text="曜日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0), pady=(10,0))
         self.cond_weekday = ttk.Combobox(cat3_frame, values=["なし", "個別全て", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"], width=12, state="readonly")
         self.cond_weekday.grid(row=1, column=3, padx=5, pady=(10,0))
         self.cond_weekday.current(0)
-
+        
         # 中位
         ttk.Label(cat3_frame, text="日:").grid(row=2, column=0, sticky=tk.W)
         self.cond_day = ttk.Combobox(cat3_frame, values=["なし", "全て", "個別全て"] + [f"{i}日" for i in range(1, 32)], width=12, state="readonly")
         self.cond_day.grid(row=2, column=1, padx=5)
         self.cond_day.current(0)
-
-        # 以降の下位時間足は行番号を1つずつ増やす（row=2→row=3, row=3→row=4, etc.）
-
-        # 下位（以降の行番号を1つずつ増やす）
-        ttk.Label(cat3_frame, text="セッション:").grid(
-            row=3, column=0, sticky=tk.W, pady=5
-        )
-        self.cond_session = ttk.Combobox(
-            cat3_frame,
-            values=["なし", "個別全て"] + list(self.sessions.keys()),
-            width=12,
-            state="readonly",
-        )
+        
+        # 下位
+        ttk.Label(cat3_frame, text="セッション:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        self.cond_session = ttk.Combobox(cat3_frame, values=["なし", "個別全て"] + list(self.sessions.keys()), width=12, state="readonly")
         self.cond_session.grid(row=3, column=1, padx=5, pady=5)
         self.cond_session.current(0)
-        self.cond_session.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
-        )
-
-        ttk.Label(cat3_frame, text="H4:").grid(
-            row=3, column=2, sticky=tk.W, padx=(10, 0), pady=5
-        )
-        h4_values_cond = ["なし", "個別全て"] + [
-            f"{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)
-        ]
-        self.cond_h4 = ttk.Combobox(
-            cat3_frame, values=h4_values_cond, width=15, state="readonly"
-        )
+        self.cond_session.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond'))
+        
+        ttk.Label(cat3_frame, text="H4:").grid(row=3, column=2, sticky=tk.W, padx=(10,0), pady=5)
+        h4_values_cond = ["なし", "個別全て"] + [f"{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
+        self.cond_h4 = ttk.Combobox(cat3_frame, values=h4_values_cond, width=15, state="readonly")
         self.cond_h4.grid(row=3, column=3, padx=5, pady=5)
         self.cond_h4.current(0)
-        self.cond_h4.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
-        )
-
+        self.cond_h4.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond'))
+        
         ttk.Label(cat3_frame, text="H1:").grid(row=4, column=0, sticky=tk.W)
-        h1_values_cond = ["なし", "個別全て"] + [
-            f"{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)
-        ]
-        self.cond_h1 = ttk.Combobox(
-            cat3_frame, values=h1_values_cond, width=15, state="readonly"
-        )
+        h1_values_cond = ["なし", "個別全て"] + [f"{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
+        self.cond_h1 = ttk.Combobox(cat3_frame, values=h1_values_cond, width=15, state="readonly")
         self.cond_h1.grid(row=4, column=1, padx=5)
         self.cond_h1.current(0)
-        self.cond_h1.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
-        )
-
-        ttk.Label(cat3_frame, text="M30:").grid(
-            row=4, column=2, sticky=tk.W, padx=(10, 0)
-        )
-        m30_values_cond = ["なし", "個別全て"] + [
-            f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]
-        ]
-        self.cond_m30 = ttk.Combobox(
-            cat3_frame, values=m30_values_cond, width=15, state="readonly"
-        )
+        self.cond_h1.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond'))
+        
+        ttk.Label(cat3_frame, text="M30:").grid(row=4, column=2, sticky=tk.W, padx=(10,0))
+        m30_values_cond = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
+        self.cond_m30 = ttk.Combobox(cat3_frame, values=m30_values_cond, width=15, state="readonly")
         self.cond_m30.grid(row=4, column=3, padx=5)
         self.cond_m30.current(0)
-        self.cond_m30.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
-        )
-
+        self.cond_m30.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond'))
+        
         ttk.Label(cat3_frame, text="M15:").grid(row=5, column=0, sticky=tk.W)
-        m15_values_cond = ["なし", "個別全て"] + [
-            f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}"
-            for h in range(24)
-            for m in [0, 15, 30, 45]
-        ]
-        self.cond_m15 = ttk.Combobox(
-            cat3_frame, values=m15_values_cond, width=15, state="readonly"
-        )
+        m15_values_cond = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}" for h in range(24) for m in [0, 15, 30, 45]]
+        self.cond_m15 = ttk.Combobox(cat3_frame, values=m15_values_cond, width=15, state="readonly")
         self.cond_m15.grid(row=5, column=1, padx=5)
         self.cond_m15.current(0)
-        self.cond_m15.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
-        )
-
-        ttk.Label(cat3_frame, text="M5:").grid(
-            row=5, column=2, sticky=tk.W, padx=(10, 0)
-        )
-        m5_values_cond = ["なし", "個別全て"] + [
-            f"{h:02d}:{m:02d}-{h:02d}:{m+5:02d}"
-            for h in range(24)
-            for m in range(0, 60, 5)
-        ]
-        self.cond_m5 = ttk.Combobox(
-            cat3_frame, values=m5_values_cond[:50], width=15, state="readonly"
-        )
+        self.cond_m15.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond'))
+        
+        ttk.Label(cat3_frame, text="M5:").grid(row=5, column=2, sticky=tk.W, padx=(10,0))
+        m5_values_cond = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+5:02d}" for h in range(24) for m in range(0, 60, 5)]
+        self.cond_m5 = ttk.Combobox(cat3_frame, values=m5_values_cond[:50], width=15, state="readonly")
         self.cond_m5.grid(row=5, column=3, padx=5)
         self.cond_m5.current(0)
-        self.cond_m5.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
-        )
-
+        self.cond_m5.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond'))
+        
         ttk.Label(cat3_frame, text="M1:").grid(row=6, column=0, sticky=tk.W)
-        m1_values_cond = ["なし", "個別全て"] + [
-            f"{h:02d}:{m:02d}-{h:02d}:{m+1:02d}" for h in range(24) for m in range(60)
-        ]
-        self.cond_m1 = ttk.Combobox(
-            cat3_frame, values=m1_values_cond[:50], width=15, state="readonly"
-        )
+        m1_values_cond = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+1:02d}" for h in range(24) for m in range(60)]
+        self.cond_m1 = ttk.Combobox(cat3_frame, values=m1_values_cond[:50], width=15, state="readonly")
         self.cond_m1.grid(row=6, column=1, padx=5)
         self.cond_m1.current(0)
-        self.cond_m1.bind(
-            "<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, "cond")
-        )
-
-        ttk.Label(cat3_frame, text="陽線・陰線:").grid(
-            row=6, column=2, sticky=tk.W, padx=(10, 0)
-        )
-        self.cond_candle = ttk.Combobox(
-            cat3_frame,
-            values=["なし", "個別全て", "陽線", "陰線"],
-            width=12,
-            state="readonly",
-        )
+        self.cond_m1.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond'))
+        
+        ttk.Label(cat3_frame, text="陽線・陰線:").grid(row=6, column=2, sticky=tk.W, padx=(10,0))
+        self.cond_candle = ttk.Combobox(cat3_frame, values=["なし", "個別全て", "陽線", "陰線"], width=12, state="readonly")
         self.cond_candle.grid(row=6, column=3, padx=5)
         self.cond_candle.current(0)
-
-        # カテゴリ4: 条件(もう一つ過去)
-        cat4_frame = ttk.LabelFrame(main_frame, text="カテゴリ4: 条件(もう一つ過去)", padding="10")
-        cat4_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        
+        # カテゴリ4: 条件(もう一つ過去)（左側）
+        cat4_frame = ttk.LabelFrame(left_frame, text="カテゴリ4: 条件(もう一つ過去)", padding="10")
+        cat4_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5)
+        
         # 連続条件
         ttk.Label(cat4_frame, text="連続条件:").grid(row=0, column=0, sticky=tk.W)
         self.cond2_consecutive = ttk.Combobox(cat4_frame, values=["なし", "1", "2", "3", "4", "5", "6"], width=8, state="readonly")
         self.cond2_consecutive.grid(row=0, column=1, padx=5, sticky=tk.W)
         self.cond2_consecutive.current(0)
-
+        
         ttk.Label(cat4_frame, text="本連続:").grid(row=0, column=2, sticky=tk.W, padx=(0,0))
         self.cond2_consecutive_type = ttk.Combobox(cat4_frame, values=["陽線", "陰線"], width=8, state="readonly")
         self.cond2_consecutive_type.grid(row=0, column=3, padx=5, sticky=tk.W)
         self.cond2_consecutive_type.current(0)
-
-       # 上位
+        
+        # 上位
         ttk.Label(cat4_frame, text="月:").grid(row=1, column=0, sticky=tk.W, pady=(10,0))
         self.cond2_month = ttk.Combobox(cat4_frame, values=["なし", "全て", "個別全て"] + [f"{i}月" for i in range(1, 13)], width=12, state="readonly")
         self.cond2_month.grid(row=1, column=1, padx=5, pady=(10,0))
         self.cond2_month.current(0)
-
-        # ★★★ 曜日を追加 ★★★
+        
         ttk.Label(cat4_frame, text="曜日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0), pady=(10,0))
         self.cond2_weekday = ttk.Combobox(cat4_frame, values=["なし", "個別全て", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"], width=12, state="readonly")
         self.cond2_weekday.grid(row=1, column=3, padx=5, pady=(10,0))
         self.cond2_weekday.current(0)
-
+        
         # 中位
-        ttk.Label(cat4_frame, text="日:").grid(row=2, column=2, sticky=tk.W, padx=(10,0), pady=(10,0))
+        ttk.Label(cat4_frame, text="日:").grid(row=2, column=0, sticky=tk.W)
         self.cond2_day = ttk.Combobox(cat4_frame, values=["なし", "全て", "個別全て"] + [f"{i}日" for i in range(1, 32)], width=12, state="readonly")
-        self.cond2_day.grid(row=2, column=3, padx=5, pady=(10,0))
+        self.cond2_day.grid(row=2, column=1, padx=5)
         self.cond2_day.current(0)
-
+        
         # 下位
         ttk.Label(cat4_frame, text="セッション:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.cond2_session = ttk.Combobox(cat4_frame, values=["なし", "個別全て"] + list(self.sessions.keys()), width=12, state="readonly")
         self.cond2_session.grid(row=3, column=1, padx=5, pady=5)
         self.cond2_session.current(0)
         self.cond2_session.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
-
+        
         ttk.Label(cat4_frame, text="H4:").grid(row=3, column=2, sticky=tk.W, padx=(10,0), pady=5)
         h4_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:00-{(h+4)%24:02d}:00" for h in range(0, 24, 4)]
         self.cond2_h4 = ttk.Combobox(cat4_frame, values=h4_values_cond2, width=15, state="readonly")
         self.cond2_h4.grid(row=3, column=3, padx=5, pady=5)
         self.cond2_h4.current(0)
         self.cond2_h4.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
-
+        
         ttk.Label(cat4_frame, text="H1:").grid(row=4, column=0, sticky=tk.W)
         h1_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:00-{(h+1)%24:02d}:00" for h in range(24)]
         self.cond2_h1 = ttk.Combobox(cat4_frame, values=h1_values_cond2, width=15, state="readonly")
         self.cond2_h1.grid(row=4, column=1, padx=5)
         self.cond2_h1.current(0)
         self.cond2_h1.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
-
+        
         ttk.Label(cat4_frame, text="M30:").grid(row=4, column=2, sticky=tk.W, padx=(10,0))
         m30_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+30:02d}" for h in range(24) for m in [0, 30]]
         self.cond2_m30 = ttk.Combobox(cat4_frame, values=m30_values_cond2, width=15, state="readonly")
         self.cond2_m30.grid(row=4, column=3, padx=5)
         self.cond2_m30.current(0)
         self.cond2_m30.bind("<<ComboboxSelected>>", lambda e: self.on_target_lower_change(e, 'cond2'))
-
+        
         ttk.Label(cat4_frame, text="M15:").grid(row=5, column=0, sticky=tk.W)
         m15_values_cond2 = ["なし", "個別全て"] + [f"{h:02d}:{m:02d}-{h:02d}:{m+15:02d}" for h in range(24) for m in [0, 15, 30, 45]]
         self.cond2_m15 = ttk.Combobox(cat4_frame, values=m15_values_cond2, width=15, state="readonly")
@@ -444,9 +346,9 @@ class ChartAnalyzerUI:
         self.cond2_candle.grid(row=6, column=3, padx=5)
         self.cond2_candle.current(0)
 
-        # 分析ボタンとCSV保存ボタン（rowを3から4に変更）
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=4, column=0, columnspan=2, pady=10)
+        # 分析ボタンとCSV保存ボタン（左側）
+        button_frame = ttk.Frame(left_frame)
+        button_frame.grid(row=4, column=0, pady=10)
 
         analyze_btn = ttk.Button(button_frame, text="データ分析実行", command=self.analyze_data)
         analyze_btn.grid(row=0, column=0, padx=5)
@@ -458,69 +360,60 @@ class ChartAnalyzerUI:
         self.analysis_results = []
         self.current_analysis_info = {}
 
-        # 結果表示エリア（rowを4から5に変更）
-        result_frame = ttk.LabelFrame(main_frame, text="分析結果", padding="10")
-        result_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
-       
-        self.result_text = tk.Text(result_frame, height=10, width=105)  # 高さを10に縮小
+        # ★★★ 結果表示エリア（右側上部） ★★★
+        result_frame = ttk.LabelFrame(right_frame, text="分析結果", padding="10")
+        result_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+
+        self.result_text = tk.Text(result_frame, height=20, width=70)
         self.result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
+
         scrollbar = ttk.Scrollbar(result_frame, orient=tk.VERTICAL, command=self.result_text.yview)
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.result_text['yscrollcommand'] = scrollbar.set
-        
 
-        # 履歴表示エリア（rowを5から6に変更）
-        history_frame = ttk.LabelFrame(main_frame, text="履歴", padding="10")
-        history_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
-        
-        # 対象履歴
+        result_frame.columnconfigure(0, weight=1)
+        result_frame.rowconfigure(0, weight=1)
+
+        # ★★★ 履歴表示エリア（右側下部） ★★★
+        history_frame = ttk.LabelFrame(right_frame, text="履歴", padding="10")
+        history_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+
+        # 対象履歴と条件履歴を横に並べる
         target_hist_frame = ttk.Frame(history_frame)
         target_hist_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
 
-        ttk.Label(target_hist_frame, text="対象履歴:", font=("", 9, "bold")).pack(
-            anchor=tk.W
-        )
+        ttk.Label(target_hist_frame, text="対象履歴:", font=('', 9, 'bold')).pack(anchor=tk.W)
 
-        self.target_history_listbox = tk.Listbox(
-            target_hist_frame, height=8, width=45
-        )  # 高さを8に増加
+        self.target_history_listbox = tk.Listbox(target_hist_frame, height=10, width=35)
         self.target_history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.target_history_listbox.bind(
-            "<<ListboxSelect>>", self.on_target_history_select
-        )
+        self.target_history_listbox.bind('<<ListboxSelect>>', self.on_target_history_select)
 
-        target_scroll = ttk.Scrollbar(
-            target_hist_frame,
-            orient=tk.VERTICAL,
-            command=self.target_history_listbox.yview,
-        )
+        target_scroll = ttk.Scrollbar(target_hist_frame, orient=tk.VERTICAL, command=self.target_history_listbox.yview)
         target_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.target_history_listbox["yscrollcommand"] = target_scroll.set
+        self.target_history_listbox['yscrollcommand'] = target_scroll.set
 
         # 条件履歴
         cond_hist_frame = ttk.Frame(history_frame)
         cond_hist_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
 
-        ttk.Label(cond_hist_frame, text="条件履歴:", font=("", 9, "bold")).pack(
-            anchor=tk.W
-        )
+        ttk.Label(cond_hist_frame, text="条件履歴:", font=('', 9, 'bold')).pack(anchor=tk.W)
 
-        self.cond_history_listbox = tk.Listbox(
-            cond_hist_frame, height=8, width=45
-        )  # 高さを8に増加
+        self.cond_history_listbox = tk.Listbox(cond_hist_frame, height=10, width=35)
         self.cond_history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.cond_history_listbox.bind("<<ListboxSelect>>", self.on_cond_history_select)
+        self.cond_history_listbox.bind('<<ListboxSelect>>', self.on_cond_history_select)
 
-        cond_scroll = ttk.Scrollbar(
-            cond_hist_frame, orient=tk.VERTICAL, command=self.cond_history_listbox.yview
-        )
+        cond_scroll = ttk.Scrollbar(cond_hist_frame, orient=tk.VERTICAL, command=self.cond_history_listbox.yview)
         cond_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.cond_history_listbox["yscrollcommand"] = cond_scroll.set
+        self.cond_history_listbox['yscrollcommand'] = cond_scroll.set
 
         # グリッドの重み付けを設定
         history_frame.columnconfigure(0, weight=1)
         history_frame.columnconfigure(1, weight=1)
+        history_frame.rowconfigure(0, weight=1)
+
+        right_frame.columnconfigure(0, weight=1)
+        right_frame.rowconfigure(0, weight=2)
+        right_frame.rowconfigure(1, weight=1)
 
         # 履歴を表示
         self.update_history_display()
