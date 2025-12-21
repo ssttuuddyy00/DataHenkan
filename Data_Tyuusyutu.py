@@ -104,7 +104,7 @@ class ChartAnalyzerUI:
         self.target_month.current(0)
         
         ttk.Label(cat2_frame, text="曜日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0))
-        self.target_weekday = ttk.Combobox(cat2_frame, values=["なし", "個別全て", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"], width=12, state="readonly")
+        self.target_weekday = ttk.Combobox(cat2_frame, values=["なし", "個別全て", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"], width=12, state="readonly")
         self.target_weekday.grid(row=1, column=3, padx=5)
         self.target_weekday.current(0)
         
@@ -203,7 +203,7 @@ class ChartAnalyzerUI:
         self.cond_month.current(0)
         
         ttk.Label(cat3_frame, text="曜日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0), pady=(10,0))
-        self.cond_weekday = ttk.Combobox(cat3_frame, values=["なし", "個別全て", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"], width=12, state="readonly")
+        self.cond_weekday = ttk.Combobox(cat3_frame, values=["なし", "個別全て", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"], width=12, state="readonly")
         self.cond_weekday.grid(row=1, column=3, padx=5, pady=(10,0))
         self.cond_weekday.current(0)
         
@@ -289,7 +289,7 @@ class ChartAnalyzerUI:
         self.cond2_month.current(0)
         
         ttk.Label(cat4_frame, text="曜日:").grid(row=1, column=2, sticky=tk.W, padx=(10,0), pady=(10,0))
-        self.cond2_weekday = ttk.Combobox(cat4_frame, values=["なし", "個別全て", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜"], width=12, state="readonly")
+        self.cond2_weekday = ttk.Combobox(cat4_frame, values=["なし", "個別全て", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"], width=12, state="readonly")
         self.cond2_weekday.grid(row=1, column=3, padx=5, pady=(10,0))
         self.cond2_weekday.current(0)
         
@@ -970,11 +970,11 @@ class ChartAnalyzerUI:
                 month_num = int(month.replace("月", ""))
                 filtered = filtered[filtered['Month'] == month_num]
         
-        # ★★★ 曜日フィルタを修正（文字列で比較） ★★★
+        # ★★★ 曜日フィルタを修正 ★★★
         if weekday and weekday != "なし" and 'Weekday' in df.columns:
-            # プルダウンの値（"月曜"）を CSVの値（"月曜日"）に変換
-            weekday_csv = weekday + "日"  # "月曜" -> "月曜日"
-            filtered = filtered[filtered['Weekday'] == weekday_csv]
+            # プルダウンの値（"月曜"）をそのまま使用し、部分一致で比較
+            # CSVには「月曜日」「火曜日」などの形式で保存されているため
+            filtered = filtered[filtered['Weekday'].str.contains(weekday, na=False)]
         
         # 日フィルタ
         if day != "なし" and 'Day' in df.columns:
