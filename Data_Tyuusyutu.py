@@ -970,12 +970,13 @@ class ChartAnalyzerUI:
                 month_num = int(month.replace("月", ""))
                 filtered = filtered[filtered['Month'] == month_num]
         
-        # ★★★ 曜日フィルタを修正 ★★★
+         # ★★★ 曜日フィルタを修正（完全一致で両パターンに対応） ★★★
         if weekday and weekday != "なし" and 'Weekday' in df.columns:
-            # プルダウンの値（"月曜"）をそのまま使用し、部分一致で比較
-            # CSVには「月曜日」「火曜日」などの形式で保存されているため
-            filtered = filtered[filtered['Weekday'].str.contains(weekday, na=False)]
-        
+            # プルダウンの値（"月曜"）に対して、"月曜"と"月曜日"の両方を試す
+            filtered = filtered[
+                (filtered['Weekday'] == weekday) | 
+                (filtered['Weekday'] == weekday + "日")
+            ]
         # 日フィルタ
         if day != "なし" and 'Day' in df.columns:
             if day == "全て":
