@@ -1097,51 +1097,193 @@ class ChartAnalyzerUI:
         self.analysis_results = []
         self.current_analysis_info = {}
         
+        # ★★★ 項目インデックスをリセット ★★★
+        if hasattr(self, '_current_item_index'):
+            del self._current_item_index
+        
         # 対象の選択を確認
         target_month = self.target_month.get()
         target_weekday = self.target_weekday.get()
         target_day = self.target_day.get()
         target_lower = self.get_selected_lower_time('target')
         
-        if target_month == "なし" and target_day == "なし" and not target_lower:
+        if target_month == "なし" and target_day == "なし" and not target_lower and target_weekday == "なし":
             self.result_text.insert(tk.END, "カテゴリ2で対象を選択してください。\n")
             return
         
         # ★★★ 分析情報を先に構築（既存ファイル検索用） ★★★
         info = {
             'target_month': target_month,
-            'target_weekday': target_weekday,  # ★追加
+            'target_weekday': target_weekday,
             'target_day': target_day,
             'target_lower': target_lower,
             'cond_consecutive': self.cond_consecutive.get(),
             'cond_consecutive_type': self.cond_consecutive_type.get(),
             'cond_month': self.cond_month.get(),
-            'cond_weekday': self.cond_weekday,  # ★追加
+            'cond_weekday': self.cond_weekday.get(),
             'cond_day': self.cond_day.get(),
             'cond_lower': self.get_selected_lower_time('cond'),
             'cond_candle': self.cond_candle.get(),
             'cond2_consecutive': self.cond2_consecutive.get(),
             'cond2_consecutive_type': self.cond2_consecutive_type.get(),
             'cond2_month': self.cond2_month.get(),
-            'cond2_weekday': self.cond2_weekday.get(),  # ★追加
+            'cond2_weekday': self.cond2_weekday.get(),
             'cond2_day': self.cond2_day.get(),
             'cond2_lower': self.get_selected_lower_time('cond2'),
             'cond2_candle': self.cond2_candle.get(),
             'extract_type': self.extract_type.get(),
             'extract_detail': self.extract_detail.get(),
-            'extract_condition': self.extract_condition.get()  # ★追加
+            'extract_condition': self.extract_condition.get()
         }
         self.current_analysis_info = info
         
-        # ★★★ 既存ファイルを検索 ★★★
+        # ★★★ 曜日と時間の個別全ての組み合わせをチェック ★★★
+        target_weekday_individual = (target_weekday == "個別全て")
+        target_time_individual = False
+        target_time_values = []
+        
+        if target_lower and target_lower[1] == "個別全て":
+            target_time_individual = True
+            target_time_values = self.get_individual_all_values(target_lower[0], None)
+        
+        # 曜日と時間の両方が個別全ての場合
+        if target_weekday_individual and target_time_individual:
+            if not hasattr(self, 'current_extracted_items'):
+                self.current_extracted_items = []
+            else:
+                self.current_extracted_items.clear()
+            
+            weekday_values = self.get_individual_all_values("曜日", self.target_weekday)
+            
+            # 各時間帯×各曜日の組み合わせで分析
+            for time_value in target_time_values:
+                for weekday in weekday_values:
+                    self.result_text.insert(tk.END, f"\n{'='*60}\n")
+                    self.result_text.insert(tk.END, f"【対象: {time_value} - {weekday}】\n")
+                    self.result_text.insert(tk.END, f"{'='*60}\n")
+                    
+                    # 組み合わせを記録
+                    combined_item = f"{time_value}_{weekday}"
+                    self.current_extracted_items.append(combined_item)
+                    
+                    temp_lower = (target_lower[0], time_value)
+                    temp_weekday = weekday
+                    
+                    cond_month = self.cond_month.get()
+                    cond_weekday = self.cond_weekday.get()
+                    cond_day = self.cond_day.get()
+                    cond_lower = self.get_selected_lower_time('cond')
+                    cond_candle = self.cond_candle.get()
+                    
+                    self.analyze_single_condition(target_month, target_day, temp_lower,
+                                                cond_month, cond_day, cond_lower, cond_candle,
+                                                None, temp_weekday)
+            
+            self.add_to_history()
+            return
+        
+        # ★★★ 条件1の曜日と時間の個別全ての組み合わせをチェック ★★★
+        cond_weekday = self.cond_weekday.get()
+        cond_lower = self.get_selected_lower_time('cond')
+        
+        cond_weekday_individual = (cond_weekday == "個別全て")
+        cond_time_individual = False
+        cond_time_values = []
+        
+        if cond_lower and cond_lower[1] == "個別全て":
+            cond_time_individual = True
+            cond_time_values = self.get_individual_all_values(cond_lower[0], None)
+        
+        # 条件1の曜日と時間の両方が個別全ての場合
+        if cond_weekday_individual and cond_time_individual:
+            if not hasattr(self, 'current_extracted_items'):
+                self.current_extracted_items = []
+            else:
+                self.current_extracted_items.clear()
+            
+            weekday_values = self.get_individual_all_values("曜日", self.cond_weekday)
+            
+            # 各時間帯×各曜日の組み合わせで分析
+            for time_value in cond_time_values:
+                for weekday in weekday_values:
+                    self.result_text.insert(tk.END, f"\n{'='*60}\n")
+                    self.result_text.insert(tk.END, f"【条件1: {time_value} - {weekday}】\n")
+                    self.result_text.insert(tk.END, f"{'='*60}\n")
+                    
+                    combined_item = f"{time_value}_{weekday}"
+                    self.current_extracted_items.append(combined_item)
+                    
+                    temp_lower = (cond_lower[0], time_value)
+                    temp_weekday = weekday
+                    
+                    cond_month = self.cond_month.get()
+                    cond_day = self.cond_day.get()
+                    cond_candle = self.cond_candle.get()
+                    
+                    self.analyze_single_condition(target_month, target_day, target_lower,
+                                                cond_month, cond_day, temp_lower, cond_candle,
+                                                None, target_weekday, temp_weekday)
+            
+            self.add_to_history()
+            return
+        
+        # ★★★ 条件2の曜日と時間の個別全ての組み合わせをチェック ★★★
+        cond2_weekday = self.cond2_weekday.get()
+        cond2_lower = self.get_selected_lower_time('cond2')
+        
+        cond2_weekday_individual = (cond2_weekday == "個別全て")
+        cond2_time_individual = False
+        cond2_time_values = []
+        
+        if cond2_lower and cond2_lower[1] == "個別全て":
+            cond2_time_individual = True
+            cond2_time_values = self.get_individual_all_values(cond2_lower[0], None)
+        
+        # 条件2の曜日と時間の両方が個別全ての場合
+        if cond2_weekday_individual and cond2_time_individual:
+            if not hasattr(self, 'current_extracted_items'):
+                self.current_extracted_items = []
+            else:
+                self.current_extracted_items.clear()
+            
+            weekday_values = self.get_individual_all_values("曜日", self.cond2_weekday)
+            
+            # 各時間帯×各曜日の組み合わせで分析
+            for time_value in cond2_time_values:
+                for weekday in weekday_values:
+                    self.result_text.insert(tk.END, f"\n{'='*60}\n")
+                    self.result_text.insert(tk.END, f"【条件2: {time_value} - {weekday}】\n")
+                    self.result_text.insert(tk.END, f"{'='*60}\n")
+                    
+                    combined_item = f"{time_value}_{weekday}"
+                    self.current_extracted_items.append(combined_item)
+                    
+                    temp_lower = (cond2_lower[0], time_value)
+                    temp_weekday = weekday
+                    
+                    cond2_month = self.cond2_month.get()
+                    cond2_day = self.cond2_day.get()
+                    cond2_candle = self.cond2_candle.get()
+                    
+                    self.analyze_single_condition(target_month, target_day, target_lower,
+                                                self.cond_month.get(), self.cond_day.get(), 
+                                                self.get_selected_lower_time('cond'), self.cond_candle.get(),
+                                                None, target_weekday, cond_weekday, temp_weekday,
+                                                cond2_month, cond2_day, temp_lower, cond2_candle)
+            
+            self.add_to_history()
+            return
+        
+        # ★★★ 既存ファイル検索（既存コードと同じ） ★★★
         target_parts = []
         if info['target_month'] != "なし":
             target_parts.append(f"月:{info['target_month']}")
+        if info['target_weekday'] != "なし":
+            target_parts.append(f"曜日:{info['target_weekday']}")
         if info['target_day'] != "なし":
             target_parts.append(f"日:{info['target_day']}")
         if info['target_lower']:
             time_type, time_value = info['target_lower']
-            # 個別時間範囲の場合も考慮
             parsed = self.parse_individual_timeframe(time_value)
             if parsed:
                 target_parts.append(f"{time_type}:個別{parsed[0]}_{parsed[1]}")
@@ -1155,6 +1297,8 @@ class ChartAnalyzerUI:
             cond2_parts.append(f"連続条件:{info['cond2_consecutive']}本{info.get('cond2_consecutive_type', '陽線')}")
         if info.get('cond2_month', 'なし') != "なし":
             cond2_parts.append(f"月:{info['cond2_month']}")
+        if info.get('cond2_weekday', 'なし') != "なし":
+            cond2_parts.append(f"曜日:{info['cond2_weekday']}")
         if info.get('cond2_day', 'なし') != "なし":
             cond2_parts.append(f"日:{info['cond2_day']}")
         if info.get('cond2_lower'):
@@ -1169,6 +1313,8 @@ class ChartAnalyzerUI:
             cond_parts.append(f"連続条件:{info['cond_consecutive']}本{info.get('cond_consecutive_type', '陽線')}")
         if info['cond_month'] != "なし":
             cond_parts.append(f"月:{info['cond_month']}")
+        if info.get('cond_weekday', 'なし') != "なし":
+            cond_parts.append(f"曜日:{info['cond_weekday']}")
         if info['cond_day'] != "なし":
             cond_parts.append(f"日:{info['cond_day']}")
         if info['cond_lower']:
@@ -1191,27 +1337,26 @@ class ChartAnalyzerUI:
             extract_str = "陽線確率"
         else:
             extract_str = f"幅_{info['extract_detail']}"
+            if info.get('extract_condition', 'なし') != "なし":
+                extract_str += f"_{info['extract_condition']}"
         
         # ★★★ 既存ファイルを検索 ★★★
         existing_file = self.search_existing_csv(target_str, cond_str, extract_str)
         
         if existing_file:
-            # 既存ファイルが見つかった場合
+            # 既存ファイルが見つかった場合（既存コードと同じ）
             self.result_text.insert(tk.END, f"既存の分析結果が見つかりました:\n")
             self.result_text.insert(tk.END, f"{os.path.basename(existing_file)}\n")
             self.result_text.insert(tk.END, "="*60 + "\n")
             
-            # 既存結果を読み込み
             loaded_results = self.load_existing_results(existing_file)
             
             if loaded_results:
                 self.analysis_results = loaded_results
                 
-                # 結果を表示
                 self.result_text.insert(tk.END, f"総データ数: {len(loaded_results)}行\n")
                 self.result_text.insert(tk.END, "-" * 50 + "\n")
                 
-                # 陽線確率の場合
                 if info['extract_type'] == "陽線確率":
                     if len(loaded_results) > 0 and '陽線確率(%)' in loaded_results[0]:
                         for result in loaded_results:
@@ -1219,11 +1364,10 @@ class ChartAnalyzerUI:
                             self.result_text.insert(tk.END, f"陽線の数: {result.get('陽線の数', 'N/A')}\n")
                             self.result_text.insert(tk.END, f"陰線の数: {result.get('陰線の数', 'N/A')}\n")
                             self.result_text.insert(tk.END, f"陽線確率: {result.get('陽線確率(%)', 'N/A')}%\n")
-                # 幅の場合
                 else:
                     self.result_text.insert(tk.END, f"{'幅':<12} {'回数':<8} {'確率'}\n")
                     self.result_text.insert(tk.END, "-" * 40 + "\n")
-                    for result in loaded_results[:30]:  # 上位30件を表示
+                    for result in loaded_results[:30]:
                         width = result.get('幅', 0)
                         count = result.get('回数', 0)
                         prob = result.get('確率(%)', 0)
@@ -1231,7 +1375,6 @@ class ChartAnalyzerUI:
                 
                 self.result_text.insert(tk.END, "\n既存の結果を使用しました。\n")
                 
-                # 履歴に追加
                 self.add_to_history()
                 return
             else:
@@ -1271,7 +1414,7 @@ class ChartAnalyzerUI:
                     
                     self.analyze_single_condition(target_month, target_day, temp_lower,
                                                 cond_month, cond_day, cond_lower, cond_candle,
-                                                None)
+                                                None, target_weekday)
                 
                 self.add_to_history()
                 return
@@ -1284,7 +1427,7 @@ class ChartAnalyzerUI:
             target_individual_all = ("日", self.get_individual_all_values("日", self.target_day))
         elif target_lower and target_lower[1] == "個別全て":
             target_individual_all = (target_lower[0], self.get_individual_all_values(target_lower[0], None))
-        if target_weekday == "個別全て":
+        elif target_weekday == "個別全て":
             target_individual_all = ("曜日", self.get_individual_all_values("曜日", self.target_weekday))
         
         cond_month = self.cond_month.get()
@@ -1302,7 +1445,7 @@ class ChartAnalyzerUI:
             cond_individual_all = (cond_lower[0], self.get_individual_all_values(cond_lower[0], None))
         elif cond_candle == "個別全て":
             cond_individual_all = ("陽線・陰線", self.get_individual_all_values("陽線・陰線", self.cond_candle))
-        if cond_weekday == "個別全て":
+        elif cond_weekday == "個別全て":
             cond_individual_all = ("曜日", self.get_individual_all_values("曜日", self.cond_weekday))
         
         # 個別全ての場合、それぞれの値について分析を実行
@@ -1321,12 +1464,13 @@ class ChartAnalyzerUI:
                 self.current_extracted_items.append(value)
                 
                 temp_month = value if filter_type == "月" else target_month
+                temp_weekday = value if filter_type == "曜日" else target_weekday
                 temp_day = value if filter_type == "日" else target_day
                 temp_lower = (target_lower[0], value) if target_lower and filter_type == target_lower[0] else target_lower
                 
                 self.analyze_single_condition(temp_month, temp_day, temp_lower, 
                                             cond_month, cond_day, cond_lower, cond_candle, 
-                                            cond_individual_all)
+                                            cond_individual_all, temp_weekday)
         elif cond_individual_all:
             filter_type, values = cond_individual_all
             for value in values:
@@ -1335,36 +1479,137 @@ class ChartAnalyzerUI:
                 self.result_text.insert(tk.END, f"{'='*60}\n")
                 
                 temp_cond_month = value if filter_type == "月" else cond_month
+                temp_cond_weekday = value if filter_type == "曜日" else cond_weekday
                 temp_cond_day = value if filter_type == "日" else cond_day
                 temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
                 temp_cond_candle = value if filter_type == "陽線・陰線" else cond_candle
                 
                 self.analyze_single_condition(target_month, target_day, target_lower,
                                             temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
-                                            None)
+                                            None, target_weekday, temp_cond_weekday)
         else:
             # 通常の単一条件分析
             self.analyze_single_condition(target_month, target_day, target_lower,
                                         cond_month, cond_day, cond_lower, cond_candle,
-                                        None)
+                                        None, target_weekday)
         
         # 履歴に追加
         self.add_to_history()
     
     def analyze_single_condition(self, target_month, target_day, target_lower,
-                             cond_month, cond_day, cond_lower, cond_candle,
-                             cond_individual_all):
+                         cond_month, cond_day, cond_lower, cond_candle,
+                         cond_individual_all, target_weekday=None, cond_weekday=None, cond2_weekday=None,
+                         cond2_month=None, cond2_day=None, cond2_lower=None, cond2_candle=None):
         """単一条件での分析を実行"""
         
-        # 条件2を取得
-        cond2_month = self.cond2_month.get()
-        cond2_day = self.cond2_day.get()
-        cond2_lower = self.get_selected_lower_time('cond2')
+        # 条件2を取得（引数がない場合はGUIから取得）
+        if cond2_month is None:
+            cond2_month = self.cond2_month.get()
+        if cond2_day is None:
+            cond2_day = self.cond2_day.get()
+        if cond2_lower is None:
+            cond2_lower = self.get_selected_lower_time('cond2')
+        if cond2_candle is None:
+            cond2_candle = self.cond2_candle.get()
         
         # ★★★ 曜日を取得 ★★★
-        target_weekday = self.target_weekday.get()
-        cond_weekday = self.cond_weekday.get()
-        cond2_weekday = self.cond2_weekday.get()
+        if target_weekday is None:
+            target_weekday = self.target_weekday.get()
+        if cond_weekday is None:
+            cond_weekday = self.cond_weekday.get()
+        if cond2_weekday is None:
+            cond2_weekday = self.cond2_weekday.get()
+        
+        # ... 以降は既存のコードと同じ
+        
+        # ★★★ 対象の曜日が「個別全て」の場合の処理を追加 ★★★
+        if target_weekday == "個別全て":
+            if not hasattr(self, 'current_extracted_items'):
+                self.current_extracted_items = []
+            else:
+                self.current_extracted_items.clear()
+            
+            weekday_values = self.get_individual_all_values("曜日", self.target_weekday)
+            for weekday in weekday_values:
+                self.result_text.insert(tk.END, f"\n{'='*60}\n")
+                self.result_text.insert(tk.END, f"【対象: {weekday}】\n")
+                self.result_text.insert(tk.END, f"{'='*60}\n")
+                
+                self.current_extracted_items.append(weekday)
+                
+                # 一時的にtarget_weekdayを個別の曜日に設定
+                temp_target_weekday = weekday
+                
+                self.process_single_weekday_analysis(target_month, target_day, target_lower,
+                                                    cond_month, cond_day, cond_lower, cond_candle,
+                                                    cond_individual_all,
+                                                    temp_target_weekday, cond_weekday, cond2_weekday,
+                                                    cond2_month, cond2_day, cond2_lower, cond2_candle)
+            return
+        
+        # ★★★ 条件1の曜日が「個別全て」の場合の処理を追加 ★★★
+        if cond_weekday == "個別全て":
+            if not hasattr(self, 'current_extracted_items'):
+                self.current_extracted_items = []
+            else:
+                self.current_extracted_items.clear()
+            
+            weekday_values = self.get_individual_all_values("曜日", self.cond_weekday)
+            for weekday in weekday_values:
+                self.result_text.insert(tk.END, f"\n{'='*60}\n")
+                self.result_text.insert(tk.END, f"【条件1: {weekday}】\n")
+                self.result_text.insert(tk.END, f"{'='*60}\n")
+                
+                self.current_extracted_items.append(weekday)
+                
+                # 一時的にcond_weekdayを個別の曜日に設定
+                temp_cond_weekday = weekday
+                
+                self.process_single_weekday_analysis(target_month, target_day, target_lower,
+                                                    cond_month, cond_day, cond_lower, cond_candle,
+                                                    cond_individual_all,
+                                                    target_weekday, temp_cond_weekday, cond2_weekday,
+                                                    cond2_month, cond2_day, cond2_lower, cond2_candle)
+            return
+        
+        # ★★★ 条件2の曜日が「個別全て」の場合の処理を追加 ★★★
+        if cond2_weekday == "個別全て":
+            if not hasattr(self, 'current_extracted_items'):
+                self.current_extracted_items = []
+            else:
+                self.current_extracted_items.clear()
+            
+            weekday_values = self.get_individual_all_values("曜日", self.cond2_weekday)
+            for weekday in weekday_values:
+                self.result_text.insert(tk.END, f"\n{'='*60}\n")
+                self.result_text.insert(tk.END, f"【条件2: {weekday}】\n")
+                self.result_text.insert(tk.END, f"{'='*60}\n")
+                
+                self.current_extracted_items.append(weekday)
+                
+                # 一時的にcond2_weekdayを個別の曜日に設定
+                temp_cond2_weekday = weekday
+                
+                self.process_single_weekday_analysis(target_month, target_day, target_lower,
+                                                    cond_month, cond_day, cond_lower, cond_candle,
+                                                    cond_individual_all,
+                                                    target_weekday, cond_weekday, temp_cond2_weekday,
+                                                    cond2_month, cond2_day, cond2_lower, cond2_candle)
+            return
+        
+        # 通常の処理を続行
+        self.process_single_weekday_analysis(target_month, target_day, target_lower,
+                                            cond_month, cond_day, cond_lower, cond_candle,
+                                            cond_individual_all,
+                                            target_weekday, cond_weekday, cond2_weekday,
+                                            cond2_month, cond2_day, cond2_lower, cond2_candle)
+
+    def process_single_weekday_analysis(self, target_month, target_day, target_lower,
+                                        cond_month, cond_day, cond_lower, cond_candle,
+                                        cond_individual_all,
+                                        target_weekday, cond_weekday, cond2_weekday,
+                                        cond2_month, cond2_day, cond2_lower, cond2_candle):
+        """曜日を含む単一条件での分析を実行（既存のanalyze_single_conditionの後半部分）"""
         
         # ★★★ 対象用のデータファイルを読み込む ★★★
         target_file_path = self.get_file_path(target_month, target_day, target_lower)
@@ -1427,10 +1672,8 @@ class ChartAnalyzerUI:
         # 個別全ての抽出項目を記録する変数を初期化
         if not hasattr(self, 'current_extracted_items'):
             self.current_extracted_items = []
-        else:
-            self.current_extracted_items.clear()
         
-        # 条件個別全ての処理
+        # 条件個別全ての処理（曜日以外）
         if cond_individual_all:
             filter_type, values = cond_individual_all
             for value in values:
@@ -1444,24 +1687,22 @@ class ChartAnalyzerUI:
                 temp_cond_lower = (cond_lower[0], value) if cond_lower and filter_type == cond_lower[0] else cond_lower
                 temp_cond_candle = value if filter_type == "陽線・陰線" else cond_candle
                 
-                # ★曜日を追加
                 self.process_with_separate_conditions(target_df, cond_df, cond2_df,
                                                     target_month, target_day, target_lower,
                                                     temp_cond_month, temp_cond_day, temp_cond_lower, temp_cond_candle,
                                                     cond_consecutive, cond_consecutive_type,
                                                     cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
                                                     cond2_lower, cond2_candle,
-                                                    target_weekday, temp_cond_weekday, cond2_weekday)
+                                                    target_weekday, cond_weekday, cond2_weekday)
         else:
-            # 通常処理 ★曜日を追加
+            # 通常処理
             self.process_with_separate_conditions(target_df, cond_df, cond2_df,
                                                 target_month, target_day, target_lower,
                                                 cond_month, cond_day, cond_lower, cond_candle,
                                                 cond_consecutive, cond_consecutive_type,
                                                 cond2_consecutive, cond2_consecutive_type, cond2_month, cond2_day, 
                                                 cond2_lower, cond2_candle,
-                                                target_weekday, cond_weekday, cond2_weekday)
-        
+                                                target_weekday, cond_weekday, cond2_weekday)   
     def search_existing_csv(self, target_str, cond_str, extract_str):
         """既存のCSVファイルを検索"""
         save_dir = "C:/Users/81803/OneDrive/ドキュメント/TyuusyutuKekka_Chart"
@@ -2006,6 +2247,16 @@ class ChartAnalyzerUI:
 
     def analyze_bullish_probability(self, df):
         """陽線確率を分析"""
+        # ★★★ 現在の抽出項目を取得 ★★★
+        current_item = None
+        if hasattr(self, 'current_extracted_items') and self.current_extracted_items:
+            if not hasattr(self, '_current_item_index'):
+                self._current_item_index = 0
+            
+            if self._current_item_index < len(self.current_extracted_items):
+                current_item = self.current_extracted_items[self._current_item_index]
+                self._current_item_index += 1
+        
         total = len(df)
         bullish = len(df[df["Close"] > df["Open"]])
         probability = (bullish / total * 100) if total > 0 else 0
@@ -2018,16 +2269,17 @@ class ChartAnalyzerUI:
 
         self.result_text.insert(tk.END, result)
 
-        # 結果を保存
+        # 結果を保存★項目名も記録
         self.analysis_results.append(
             {
                 "総ローソク足数": total,
                 "陽線の数": bullish,
                 "陰線の数": total - bullish,
                 "陽線確率(%)": round(probability, 2),
+                '_item': current_item
             }
         )
-
+    
     def analyze_width(self, df, detail):
         """幅の出現頻度を分析"""
         # ★★★ 抽出内容条件を取得 ★★★
@@ -2040,13 +2292,46 @@ class ChartAnalyzerUI:
         elif extract_condition == "陰線":
             filtered_df = filtered_df[filtered_df['Close'] < filtered_df['Open']]
         
+        # ★★★ 現在の抽出項目を取得 ★★★
+        current_item = None
+        if hasattr(self, 'current_extracted_items') and self.current_extracted_items:
+            # 現在処理中の項目を特定
+            # analyze_widthが呼ばれるたびに、対応する項目を記録
+            if not hasattr(self, '_current_item_index'):
+                self._current_item_index = 0
+            
+            if self._current_item_index < len(self.current_extracted_items):
+                current_item = self.current_extracted_items[self._current_item_index]
+                self._current_item_index += 1
+        
         if filtered_df.empty:
             self.result_text.insert(tk.END, f"抽出内容条件（{extract_condition}）に合致するデータがありません。\n")
+            
+            # ★★★ データがない場合でも結果を記録 ★★★
+            self.analysis_results.append({
+                '統計情報': '分析対象',
+                '値': detail,
+                '備考': extract_condition if extract_condition != "なし" else '',
+                '_item': current_item  # 項目名を記録
+            })
+            self.analysis_results.append({
+                '統計情報': '総データ数',
+                '値': 0,
+                '備考': 'データなし',
+                '_item': current_item
+            })
+            # 空行を追加
+            self.analysis_results.append({
+                '統計情報': '',
+                '値': '',
+                '備考': '',
+                '_item': current_item
+            })
             return
         
         # 幅を計算
         if detail == "実体":
-            widths = filtered_df['Close'] - filtered_df['Open']  # マイナスを保持
+            widths = filtered_df['Close'] - filtered_df['Open']
         elif detail == "上幅":
             widths = filtered_df['High'] - filtered_df[['Open', 'Close']].max(axis=1)
         elif detail == "下幅":
@@ -2056,7 +2341,7 @@ class ChartAnalyzerUI:
         elif detail == "下髭":
             widths = filtered_df[['Open', 'Close']].min(axis=1) - filtered_df['Low']
         else:
-            widths = filtered_df['Close'] - filtered_df['Open']  # マイナスを保持
+            widths = filtered_df['Close'] - filtered_df['Open']
         
         # 幅を小数点5桁で丸める
         widths = widths.round(5)
@@ -2080,7 +2365,7 @@ class ChartAnalyzerUI:
         
         result = f"【幅の出現頻度分析】\n"
         result += f"分析対象: {detail}\n"
-        if extract_condition != "なし":  # ★条件が設定されている場合は表示
+        if extract_condition != "なし":
             result += f"抽出内容条件: {extract_condition}\n"
         result += f"総データ数: {total}\n"
         result += f"プラス幅: {positive_count}件 ({positive_count/total*100:.2f}%) 平均: {positive_mean:.5f}\n"
@@ -2089,82 +2374,132 @@ class ChartAnalyzerUI:
         result += f"最小幅: {widths.min():.5f}\n"
         result += f"最大幅: {widths.max():.5f}\n"
         result += f"全体平均幅: {widths.mean():.5f}\n"
-        result += f"\n--- 出現頻度 (上位30件) ---\n"
-        result += f"{'幅':<12} {'回数':<8} {'確率'}\n"
-        result += "-" * 40 + "\n"
         
-        # 統計情報を結果に追加（CSV出力用）
+        # 統計情報を結果に追加（CSV出力用）★項目名も記録
         self.analysis_results.append({
             '統計情報': '分析対象',
             '値': detail,
-            '備考': extract_condition if extract_condition != "なし" else ''
+            '備考': extract_condition if extract_condition != "なし" else '',
+            '_item': current_item
         })
         self.analysis_results.append({
             '統計情報': '総データ数',
             '値': total,
-            '備考': ''
+            '備考': '',
+            '_item': current_item
         })
         self.analysis_results.append({
             '統計情報': 'プラス幅件数',
             '値': positive_count,
-            '備考': f'{positive_count/total*100:.2f}%'
+            '備考': f'{positive_count/total*100:.2f}%',
+            '_item': current_item
         })
         self.analysis_results.append({
             '統計情報': 'プラス幅平均',
             '値': round(positive_mean, 5),
-            '備考': ''
+            '備考': '',
+            '_item': current_item
         })
         self.analysis_results.append({
             '統計情報': 'マイナス幅件数',
             '値': negative_count,
-            '備考': f'{negative_count/total*100:.2f}%'
+            '備考': f'{negative_count/total*100:.2f}%',
+            '_item': current_item
         })
         self.analysis_results.append({
             '統計情報': 'マイナス幅平均',
             '値': round(negative_mean, 5),
-            '備考': ''
+            '備考': '',
+            '_item': current_item
         })
         self.analysis_results.append({
             '統計情報': 'ゼロ幅件数',
             '値': zero_count,
-            '備考': f'{zero_count/total*100:.2f}%'
+            '備考': f'{zero_count/total*100:.2f}%',
+            '_item': current_item
         })
         self.analysis_results.append({
             '統計情報': '最小幅',
             '値': round(widths.min(), 5),
-            '備考': ''
+            '備考': '',
+            '_item': current_item
         })
         self.analysis_results.append({
             '統計情報': '最大幅',
             '値': round(widths.max(), 5),
-            '備考': ''
+            '備考': '',
+            '_item': current_item
         })
         self.analysis_results.append({
             '統計情報': '全体平均幅',
             '値': round(widths.mean(), 5),
-            '備考': ''
+            '備考': '',
+            '_item': current_item
         })
         
         # 空行を追加（統計情報と頻度データの区切り）
         self.analysis_results.append({
             '統計情報': '',
             '値': '',
-            '備考': ''
+            '備考': '',
+            '_item': current_item
         })
         
-        # マイナスの値も含めて頻度順にソート
-        for width, count in sorted(counter.items(), key=lambda x: x[1], reverse=True)[:30]:
+        # ★★★ プラスとマイナスを分けて上位30件を表示 ★★★
+        
+        # プラスの値の頻度カウントと上位30件
+        positive_counter = {k: v for k, v in counter.items() if k > 0}
+        result += f"\n--- プラス幅の出現頻度 (上位30件) ---\n"
+        result += f"{'幅':<12} {'回数':<8} {'確率'}\n"
+        result += "-" * 40 + "\n"
+        
+        for width, count in sorted(positive_counter.items(), key=lambda x: x[1], reverse=True)[:30]:
             probability = count / total * 100
             result += f"{width:<12.5f} {count:<8} {probability:>6.2f}%\n"
             
-            # 結果を保存
+            # 結果を保存★項目名も記録
             self.analysis_results.append({
                 '幅': round(width, 5),
                 '回数': count,
-                '確率(%)': round(probability, 2)
+                '確率(%)': round(probability, 2),
+                '_item': current_item
+            })
+        
+        # マイナスの値の頻度カウントと上位30件
+        negative_counter = {k: v for k, v in counter.items() if k < 0}
+        result += f"\n--- マイナス幅の出現頻度 (上位30件) ---\n"
+        result += f"{'幅':<12} {'回数':<8} {'確率'}\n"
+        result += "-" * 40 + "\n"
+        
+        for width, count in sorted(negative_counter.items(), key=lambda x: x[1], reverse=True)[:30]:
+            probability = count / total * 100
+            result += f"{width:<12.5f} {count:<8} {probability:>6.2f}%\n"
+            
+            # 結果を保存★項目名も記録
+            self.analysis_results.append({
+                '幅': round(width, 5),
+                '回数': count,
+                '確率(%)': round(probability, 2),
+                '_item': current_item
+            })
+        
+        # ゼロの値（あれば表示）
+        if zero_count > 0:
+            result += f"\n--- ゼロ幅 ---\n"
+            result += f"{'幅':<12} {'回数':<8} {'確率'}\n"
+            result += "-" * 40 + "\n"
+            probability = zero_count / total * 100
+            result += f"{0.00000:<12.5f} {zero_count:<8} {probability:>6.2f}%\n"
+            
+            self.analysis_results.append({
+                '幅': 0.0,
+                '回数': zero_count,
+                '確率(%)': round(probability, 2),
+                '_item': current_item
             })
         
         self.result_text.insert(tk.END, result)
+    
     def save_to_csv(self):
         """分析結果をCSVに保存"""
         if not self.analysis_results:
@@ -2189,7 +2524,7 @@ class ChartAnalyzerUI:
         target_parts = []
         if info['target_month'] != "なし":
             target_parts.append(f"月:{info['target_month']}")
-        if info.get('target_weekday', 'なし') != "なし":  # ★追加
+        if info.get('target_weekday', 'なし') != "なし":
             target_parts.append(f"曜日:{info['target_weekday']}")
         if info['target_day'] != "なし":
             target_parts.append(f"日:{info['target_day']}")
@@ -2244,7 +2579,7 @@ class ChartAnalyzerUI:
             extract_str = "陽線確率"
         else:
             extract_str = f"幅_{info['extract_detail']}"
-            # ★抽出内容条件を追加
+            # 抽出内容条件を追加
             if info.get('extract_condition', 'なし') != "なし":
                 extract_str += f"_{info['extract_condition']}"
         
@@ -2252,90 +2587,247 @@ class ChartAnalyzerUI:
         target_str = target_str.replace(":", "-").replace("/", "-").replace("\\", "-")
         cond_str = cond_str.replace(":", "-").replace("/", "-").replace("\\", "-").replace("[", "(").replace("]", ")")
         
-        filename = f"{target_str}_{cond_str}_{extract_str}.csv"
-        filepath = os.path.join(save_dir, filename)
-        
         try:
-            # 個別全ての場合、抽出した時間情報を追加
-            df_results = pd.DataFrame(self.analysis_results)
-            
-            # 個別全てで抽出された項目を特定
-            extracted_item = None
-            extracted_type = None
-            
-            # 対象で個別全てが使われているか確認
-            if info['target_month'] == "個別全て":
-                extracted_type = "対象月"
-            elif info['target_day'] == "個別全て":
-                extracted_type = "対象日"
-            elif info['target_lower'] and info['target_lower'][1] == "個別全て":
-                extracted_type = f"対象{info['target_lower'][0]}"
-            
-            # 条件1で個別全てが使われているか確認
-            elif info['cond_month'] == "個別全て":
-                extracted_type = "条件1_月"
-            elif info['cond_day'] == "個別全て":
-                extracted_type = "条件1_日"
-            elif info['cond_lower'] and info['cond_lower'][1] == "個別全て":
-                extracted_type = f"条件1_{info['cond_lower'][0]}"
-            elif info['cond_candle'] == "個別全て":
-                extracted_type = "条件1_陽線陰線"
-            
-            # 条件2で個別全てが使われているか確認
-            elif info.get('cond2_month') == "個別全て":
-                extracted_type = "条件2_月"
-            elif info.get('cond2_day') == "個別全て":
-                extracted_type = "条件2_日"
-            elif info.get('cond2_lower') and info['cond2_lower'][1] == "個別全て":
-                extracted_type = f"条件2_{info['cond2_lower'][0]}"
-            elif info.get('cond2_candle') == "個別全て":
-                extracted_type = "条件2_陽線陰線"
-            
-            # 個別全ての場合、抽出項目列を先頭に追加
-            if extracted_type and hasattr(self, 'current_extracted_items') and self.current_extracted_items:
-                # 各結果に対応する抽出項目を追加
-                if len(self.current_extracted_items) == len(df_results):
-                    df_results.insert(0, extracted_type, self.current_extracted_items)
-                else:
-                    # 結果行数と抽出項目数が一致しない場合の処理
-                    # 各結果グループごとに抽出項目を割り当て
-                    extracted_items_expanded = []
-                    result_idx = 0
+            # ★★★ 幅の場合、プラスとマイナスを別々のファイルに保存 ★★★
+            if info['extract_type'] == "幅":
+                # 個別全ての抽出項目列があるか確認
+                extracted_type = None
+                if info['target_month'] == "個別全て":
+                    extracted_type = "対象月"
+                elif info['target_day'] == "個別全て":
+                    extracted_type = "対象日"
+                elif info.get('target_weekday') == "個別全て":
+                    extracted_type = "対象曜日"
+                elif info['target_lower'] and info['target_lower'][1] == "個別全て":
+                    extracted_type = f"対象{info['target_lower'][0]}"
+                elif info['cond_month'] == "個別全て":
+                    extracted_type = "条件1_月"
+                elif info['cond_day'] == "個別全て":
+                    extracted_type = "条件1_日"
+                elif info.get('cond_weekday') == "個別全て":
+                    extracted_type = "条件1_曜日"
+                elif info['cond_lower'] and info['cond_lower'][1] == "個別全て":
+                    extracted_type = f"条件1_{info['cond_lower'][0]}"
+                elif info['cond_candle'] == "個別全て":
+                    extracted_type = "条件1_陽線陰線"
+                elif info.get('cond2_month') == "個別全て":
+                    extracted_type = "条件2_月"
+                elif info.get('cond2_day') == "個別全て":
+                    extracted_type = "条件2_日"
+                elif info.get('cond2_weekday') == "個別全て":
+                    extracted_type = "条件2_曜日"
+                elif info.get('cond2_lower') and info['cond2_lower'][1] == "個別全て":
+                    extracted_type = f"条件2_{info['cond2_lower'][0]}"
+                elif info.get('cond2_candle') == "個別全て":
+                    extracted_type = "条件2_陽線陰線"
+                
+                # ★★★ 曜日と時間の組み合わせの場合の抽出タイプを設定 ★★★
+                is_weekday_time_combination = False
+                if ((info.get('target_weekday') == "個別全て" and info['target_lower'] and info['target_lower'][1] == "個別全て") or
+                    (info.get('cond_weekday') == "個別全て" and info['cond_lower'] and info['cond_lower'][1] == "個別全て") or
+                    (info.get('cond2_weekday') == "個別全て" and info.get('cond2_lower') and info['cond2_lower'][1] == "個別全て")):
+                    is_weekday_time_combination = True
+                    if info.get('target_weekday') == "個別全て" and info['target_lower'] and info['target_lower'][1] == "個別全て":
+                        extracted_type = f"対象{info['target_lower'][0]}_曜日"
+                    elif info.get('cond_weekday') == "個別全て" and info['cond_lower'] and info['cond_lower'][1] == "個別全て":
+                        extracted_type = f"条件1_{info['cond_lower'][0]}_曜日"
+                    elif info.get('cond2_weekday') == "個別全て" and info.get('cond2_lower') and info['cond2_lower'][1] == "個別全te":
+                        extracted_type = f"条件2_{info['cond2_lower'][0]}_曜日"
+                
+                # ★★★ 個別全ての場合、結果を項目ごとに分割 ★★★
+                if extracted_type and hasattr(self, 'current_extracted_items') and self.current_extracted_items:
+                    # ★★★ _itemフィールドを使って各項目の結果を分類 ★★★
+                    items_results = {}
+                    
+                    # 全ての抽出項目を初期化
                     for item in self.current_extracted_items:
-                        # 各項目の結果数を推定（陽線確率なら1行、幅なら複数行）
-                        if info['extract_type'] == "陽線確率":
-                            extracted_items_expanded.append(item)
-                            result_idx += 1
-                        else:
-                            # 幅の場合、次の項目まで or 最後まで同じ値を使用
-                            next_idx = result_idx
-                            # 次の結果グループの開始位置を探す
-                            while next_idx < len(df_results):
-                                extracted_items_expanded.append(item)
-                                next_idx += 1
-                                # 適切な区切りで判断（実装依存）
-                                if next_idx < len(df_results):
-                                    # ここでは最大30件（上位表示件数）を目安に区切る
-                                    if (next_idx - result_idx) >= 30:
-                                        break
-                            result_idx = next_idx
+                        items_results[item] = {
+                            'stats': [],
+                            'positive': [],
+                            'negative': [],
+                            'zero': []
+                        }
                     
-                    # リストの長さを結果数に合わせる
-                    if len(extracted_items_expanded) >= len(df_results):
-                        extracted_items_expanded = extracted_items_expanded[:len(df_results)]
-                    else:
-                        # 不足分を最後の値で埋める
-                        if extracted_items_expanded:
-                            extracted_items_expanded.extend([extracted_items_expanded[-1]] * (len(df_results) - len(extracted_items_expanded)))
+                    # 結果を_itemフィールドで分類
+                    for result in self.analysis_results:
+                        item_name = result.get('_item')
+                        
+                        if item_name and item_name in items_results:
+                            # _itemフィールドを除去してから追加
+                            result_copy = {k: v for k, v in result.items() if k != '_item'}
+                            
+                            if '統計情報' in result_copy:
+                                items_results[item_name]['stats'].append(result_copy)
+                            elif '幅' in result_copy:
+                                width = result_copy.get('幅', 0)
+                                if width > 0:
+                                    items_results[item_name]['positive'].append(result_copy)
+                                elif width < 0:
+                                    items_results[item_name]['negative'].append(result_copy)
+                                else:
+                                    items_results[item_name]['zero'].append(result_copy)
                     
-                    if extracted_items_expanded:
-                        df_results.insert(0, extracted_type, extracted_items_expanded)
+                    # 各項目の結果をCSVに保存
+                    all_positive_data = []
+                    all_negative_data = []
+                    all_zero_data = []
+                    
+                    # current_extracted_itemsの順序を保持して出力
+                    for item_name in self.current_extracted_items:
+                        if item_name not in items_results:
+                            continue
+                        
+                        item_data = items_results[item_name]
+                        stats_data = item_data['stats']
+                        positive_data = item_data['positive'][:30]
+                        negative_data = item_data['negative'][:30]
+                        zero_data = item_data['zero']
+                        
+                        # データがない場合は、「データなし」の統計情報を追加
+                        if not stats_data or (stats_data and any(s.get('値') == 0 and s.get('備考') == 'データなし' for s in stats_data)):
+                            if not stats_data:
+                                stats_data = [
+                                    {'統計情報': '分析対象', '値': info.get('extract_detail', ''), '備考': ''},
+                                    {'統計情報': '総データ数', '値': 0, '備考': 'データなし'}
+                                ]
+                        
+                        # 統計情報に抽出項目名を追加
+                        for stat in stats_data:
+                            stat_with_item = {extracted_type: "", **stat}
+                            all_positive_data.append(stat_with_item)
+                            all_negative_data.append(stat_with_item)
+                            if zero_data or not positive_data and not negative_data:
+                                all_zero_data.append(stat_with_item)
+                        
+                        # データに抽出項目名を追加
+                        for pos in positive_data:
+                            pos_with_item = {extracted_type: item_name, **pos}
+                            all_positive_data.append(pos_with_item)
+                        
+                        for neg in negative_data:
+                            neg_with_item = {extracted_type: item_name, **neg}
+                            all_negative_data.append(neg_with_item)
+                        
+                        for z in zero_data:
+                            z_with_item = {extracted_type: item_name, **z}
+                            all_zero_data.append(z_with_item)
+                
+                # ... 以下ファイル保存処理は同じ
+                    
+                    # プラスの値を保存
+                    if all_positive_data:
+                        filename_positive = f"{target_str}_{cond_str}_{extract_str}_プラス.csv"
+                        filepath_positive = os.path.join(save_dir, filename_positive)
+                        df_positive = pd.DataFrame(all_positive_data)
+                        df_positive.to_csv(filepath_positive, index=False, encoding='utf-8-sig')
+                    
+                    # マイナスの値を保存
+                    if all_negative_data:
+                        filename_negative = f"{target_str}_{cond_str}_{extract_str}_マイナス.csv"
+                        filepath_negative = os.path.join(save_dir, filename_negative)
+                        df_negative = pd.DataFrame(all_negative_data)
+                        df_negative.to_csv(filepath_negative, index=False, encoding='utf-8-sig')
+                    
+                    # ゼロの値を保存
+                    if all_zero_data:
+                        filename_zero = f"{target_str}_{cond_str}_{extract_str}_ゼロ.csv"
+                        filepath_zero = os.path.join(save_dir, filename_zero)
+                        df_zero = pd.DataFrame(all_zero_data)
+                        df_zero.to_csv(filepath_zero, index=False, encoding='utf-8-sig')
+                    
+                    message = "分析結果を保存しました:\n"
+                    if all_positive_data:
+                        message += f"プラス: {filepath_positive}\n"
+                    if all_negative_data:
+                        message += f"マイナス: {filepath_negative}\n"
+                    if all_zero_data:
+                        message += f"ゼロ: {filepath_zero}\n"
+                    
+                    messagebox.showinfo("保存完了", message)
+                    
+                else:
+                    # ★★★ 個別全てでない場合の通常処理（既存コードと同じ） ★★★
+                    stats_data = []
+                    width_data = []
+                    
+                    for item in self.analysis_results:
+                        if '統計情報' in item:
+                            stats_data.append(item)
+                        elif '幅' in item:
+                            width_data.append(item)
+                    
+                    positive_data = [item for item in width_data if item.get('幅', 0) > 0][:30]
+                    negative_data = [item for item in width_data if item.get('幅', 0) < 0][:30]
+                    zero_data = [item for item in width_data if item.get('幅', 0) == 0]
+                    
+                    if positive_data:
+                        filename_positive = f"{target_str}_{cond_str}_{extract_str}_プラス.csv"
+                        filepath_positive = os.path.join(save_dir, filename_positive)
+                        df_positive = pd.DataFrame(stats_data + positive_data)
+                        df_positive.to_csv(filepath_positive, index=False, encoding='utf-8-sig')
+                    
+                    if negative_data:
+                        filename_negative = f"{target_str}_{cond_str}_{extract_str}_マイナス.csv"
+                        filepath_negative = os.path.join(save_dir, filename_negative)
+                        df_negative = pd.DataFrame(stats_data + negative_data)
+                        df_negative.to_csv(filepath_negative, index=False, encoding='utf-8-sig')
+                    
+                    if zero_data:
+                        filename_zero = f"{target_str}_{cond_str}_{extract_str}_ゼロ.csv"
+                        filepath_zero = os.path.join(save_dir, filename_zero)
+                        df_zero = pd.DataFrame(stats_data + zero_data)
+                        df_zero.to_csv(filepath_zero, index=False, encoding='utf-8-sig')
+                    
+                    message = "分析結果を保存しました:\n"
+                    if positive_data:
+                        message += f"プラス: {filepath_positive}\n"
+                    if negative_data:
+                        message += f"マイナス: {filepath_negative}\n"
+                    if zero_data:
+                        message += f"ゼロ: {filepath_zero}\n"
+                    
+                    messagebox.showinfo("保存完了", message)
             
-            df_results.to_csv(filepath, index=False, encoding='utf-8-sig')
-            
-            messagebox.showinfo("保存完了", f"分析結果を保存しました:\n{filepath}")
+            else:
+                # ★★★ 個別全ての場合、current_extracted_itemsと結果を正確にマッピング ★★★
+                if extracted_type and hasattr(self, 'current_extracted_items') and self.current_extracted_items:
+                    # ★★★ _itemフィールドを使って正確にマッピング ★★★
+                    results_with_items = []
+                    
+                    for item in self.current_extracted_items:
+                        # この項目に対応する結果を探す
+                        found = False
+                        for result in self.analysis_results:
+                            if result.get('_item') == item:
+                                result_copy = {k: v for k, v in result.items() if k != '_item'}
+                                result_copy[extracted_type] = item
+                                results_with_items.append(result_copy)
+                                found = True
+                                break
+                        
+                        # データがない項目の場合、空の行を追加
+                        if not found:
+                            results_with_items.append({
+                                extracted_type: item,
+                                '総ローソク足数': 0,
+                                '陽線の数': 0,
+                                '陰線の数': 0,
+                                '陽線確率(%)': 0.0
+                            })
+                    
+                    df_results = pd.DataFrame(results_with_items)
+                else:
+                    # _itemフィールドを除去
+                    clean_results = [{k: v for k, v in r.items() if k != '_item'} for r in self.analysis_results]
+                    df_results = pd.DataFrame(clean_results)
+                
+                df_results.to_csv(filepath, index=False, encoding='utf-8-sig')
+                
+                messagebox.showinfo("保存完了", f"分析結果を保存しました:\n{filepath}")
+                
         except Exception as e:
             messagebox.showerror("エラー", f"CSV保存中にエラーが発生しました: {e}")
+
 
 if __name__ == "__main__":
     root = tk.Tk()
