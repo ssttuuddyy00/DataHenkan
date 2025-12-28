@@ -241,21 +241,77 @@ def on_button_press(e):
 def save_csv_files():
     if not history: return
     root = tk.Tk(); root.withdraw()
+    
+    # 既存ファイル選択
     f_path = filedialog.askopenfilename(title="追記するCSVを選択（新規ならキャンセル）", filetypes=[("CSV","*.csv")])
     if not f_path:
+        # 新規作成
         f_path = filedialog.asksaveasfilename(title="新規保存名を入力", filetypes=[("CSV","*.csv")], defaultextension=".csv", initialfile="trading_summary.csv")
+    
     if not f_path: return
+    
     base = os.path.splitext(f_path)[0].replace("_summary","").replace("_details","")
+    summary_file = f"{base}_summary.csv"
+    detail_file = f"{base}_details.csv"
+    
     df = pd.DataFrame(history)
     exec_t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    wins = df[df['pips']>0]['pips']
-    losses = df[df['pips']<=0]['pips'].abs()
-    rr = round(wins.mean()/losses.mean(), 2) if not wins.empty and not losses.empty else 0
-    summary = {"RealTime": exec_t, "Trades": len(df), "WinRate": round(len(wins)/len(df)*100, 1), "Pips": round(df['pips'].sum(),1), "Profit": df['profit'].sum(), "RR": rr}
-    pd.DataFrame([summary]).to_csv(f"{base}_summary.csv", mode='a', index=False, header=not os.path.exists(f"{base}_summary.csv"), encoding='utf-8-sig')
-    df.to_csv(f"{base}_details.csv", mode='a', index=False, header=not os.path.exists(f"{base}_details.csv"), encoding='utf-8-sig')
-    messagebox.showinfo("完了", "追記保存しました")
+    
+    # --- 統計計算 ---
+    wins_df = df[df['profit'] > 0]
+    losses_df = df[df['profit'] <= 0]
+    
+    total_profit = wins_df['profit'].sum()
+    total_loss = abs(losses_df['profit'].sum())
+    pf = round(total_profit / total_loss, 2) if total_loss != 0 else (round(total_profit, 2) if total_profit > 0 else 0)
+    
+    # リスクリワード (平均利益 / 平均損失)
+    avg_win_pips = wins_df['pips'].mean() if not wins_df.empty else 0
+    avg_loss_pips = abs(losses_df['pips'].mean()) if not losses_df.empty else 0
+    rr = round(avg_win_pips / avg_loss_pips, 2) if avg_loss_pips != 0 else 0
+    
+    # 連勝・連敗計算
+    win_loss_list = [1 if p > 0 else 0 for p in df['profit']]
+    max_win_streak = 0
+    max_loss_streak = 0
+    current_win = 0
+    current_loss = 0
+    
+    for val in win_loss_list:
+        if val == 1:
+            current_win += 1
+            current_loss = 0
+        else:
+            current_loss += 1
+            current_win = 0
+        max_win_streak = max(max_win_streak, current_win)
+        max_loss_streak = max(max_loss_streak, current_loss)
 
+    # 指定されたラベルに合わせた辞書
+    summary = {
+        "Execution_RealTime": exec_t,
+        "Start_Trade_Time": df['time'].min(),
+        "End_Trade_Time": df['exit_time'].max(),
+        "Total_Trades": len(df),
+        "Total_Pips": round(df['pips'].sum(), 1),
+        "Profit_JPY": round(df['profit'].sum(), 0),
+        "Final_Balance": round(balance, 0),
+        "Win_Rate": round(len(wins_df) / len(df) * 100, 1),
+        "Risk_Reward": rr,
+        "PF": pf,
+        "Win_Streaks": max_win_streak,
+        "Loss_Streaks": max_loss_streak
+    }
+
+    # Summary保存
+    pd.DataFrame([summary]).to_csv(summary_file, mode='a', index=False, 
+                                   header=not os.path.exists(summary_file), encoding='utf-8-sig')
+    
+    # Details保存
+    df.to_csv(detail_file, mode='a', index=False, 
+              header=not os.path.exists(detail_file), encoding='utf-8-sig')
+    
+    messagebox.showinfo("完了", f"統計を保存しました:\nPF: {pf}, 連勝: {max_win_streak}, 連敗: {max_loss_streak}")
 def on_close(event):
     if history and messagebox.askyesno("保存", "CSVに記録しますか？"): save_csv_files()
     plt.close()
