@@ -100,6 +100,10 @@ markers, history = [], []
 pressed = set()
 selected_obj, dragging = None, False
 
+# ロット管理用
+lot_mode = "AUTO" # "AUTO" or "FIX"
+fixed_lot_size = 0.1
+
 # =========================
 # 4. 判定・操作ロジック
 # =========================
@@ -110,119 +114,108 @@ def check_stop_loss():
     sl_p = stop_lines_data[0][0]
     is_hit = (trade["side"]=="BUY" and curr["Low"] <= sl_p) or (trade["side"]=="SELL" and curr["High"] >= sl_p)
     if is_hit:
-        pips = (sl_p - trade["price"]) / PIPS_UNIT if trade["side"]=="BUY" else (trade["price"] - sl_p) / PIPS_UNIT
+        pips = round((sl_p - trade["price"]) / PIPS_UNIT if trade["side"]=="BUY" else (trade["price"] - sl_p) / PIPS_UNIT, 1)
         profit = round(pips * ONE_LOT_PIPS_VALUE * trade["lot"], 0)
         history.append({**trade, "exit_p": sl_p, "exit_time": curr.name, "pips": pips, "profit": profit})
         balance += profit
-        markers.append((curr.name, sl_p, "x", "black"))
-        print(f">> 【損切り】{curr.name} / {profit:,.0f}円")
+        # 損切りマークも半透明に
+        markers.append((curr.name, sl_p, "x", "black", 0.3))
+        print(f">> 【損切り】{curr.name} / {pips}p ({profit:,.0f}円)")
         trade = None; stop_lines_data.clear()
         return True
     return False
 
-def execute_skip():
-    global idx_h1, is_autoplay
-    is_autoplay = False
-    print(">>> スキップ中...")
-    while idx_h1 < len(df_h1) - 1:
-        idx_h1 += 1
-        if check_stop_loss(): break
-        curr = df_h1.iloc[idx_h1]
-        if any(curr["Low"] <= p <= curr["High"] for p, c, ls in hlines_data): break
-    redraw()
-
 def redraw():
     global balance, idx_h1
     try:
-        # 現在表示中のH1データ
         h1_data = df_h1.iloc[idx_h1 - WINDOW_H1 : idx_h1 + 1]
         v_times = h1_data.index.tolist()
         current_time = v_times[-1]
         v_price = h1_data.iloc[-1]["Close"]
         
-        # --- 上位足のフィルタリング修正 ---
-        # 日足：現在の「日」の開始時刻より前のデータのみ表示（昨日の確定足まで）
+        # 上位足フィルタ：現在時刻を含む期間は表示しない
         day_start = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
         d1_visible = df_d1[df_d1.index < day_start].iloc[-WINDOW_D1:]
-        
-        # 月足：現在の「月」の1日 00:00 より前のデータのみ表示（先月の確定足まで）
         month_start = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         mn_visible = df_mn[df_mn.index < month_start].iloc[-WINDOW_MN:]
         
         ax_mn.clear(); ax_d1.clear(); ax_h1.clear(); ax_info.clear()
-        
-        # 描画実行
         mpf.plot(h1_data, ax=ax_h1, type="candle", style="yahoo")
-        if not d1_visible.empty:
-            mpf.plot(d1_visible, ax=ax_d1, type="candle", style="yahoo")
-        if not mn_visible.empty:
-            mpf.plot(mn_visible, ax=ax_mn, type="candle", style="yahoo")
+        if not d1_visible.empty: mpf.plot(d1_visible, ax=ax_d1, type="candle", style="yahoo")
+        if not mn_visible.empty: mpf.plot(mn_visible, ax=ax_mn, type="candle", style="yahoo")
 
-        # ライン描画 (H1, D1, MNすべてに反映)
         for ax in [ax_h1, ax_d1, ax_mn]:
             for i, (p, c, ls) in enumerate(hlines_data + stop_lines_data):
                 sel = selected_obj == ('stop' if i >= len(hlines_data) else 'hline', i if i < len(hlines_data) else i - len(hlines_data))
                 ax.add_line(Line2D([0, 1], [p, p], transform=ax.get_yaxis_transform(), color="orange" if sel else c, linestyle=ls, linewidth=2 if sel else 1))
         
-        # マーカー描画
-        for mt, mp, ms, mc in markers:
-            if mt in v_times: ax_h1.scatter(v_times.index(mt), mp, marker=ms, color=mc, s=100, zorder=5)
+        # マーカー描画：不透明度(alpha)と重なり順(zorder)を調整
+        for item in markers:
+            mt, mp, ms, mc = item[0], item[1], item[2], item[3]
+            ma = item[4] if len(item) > 4 else 1.0 # alpha値があれば使う
+            if mt in v_times:
+                # zorder=1にすることで、ローソク足(zorder=3程度)の後ろに隠れるようにする
+                ax_h1.scatter(v_times.index(mt), mp, marker=ms, color=mc, s=80, alpha=ma, zorder=1)
 
-        # 情報パネル
+        # ロット計算
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
-        p_lot = max(0.01, round(RISK_PER_TRADE / (abs(v_price - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if sl_p else 0.1
-        total_pips = round(sum(h['pips'] for h in history), 1)
+        if lot_mode == "AUTO":
+            current_lot = max(0.01, round(RISK_PER_TRADE / (abs(v_price - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if sl_p else 0.1
+        else:
+            current_lot = fixed_lot_size
 
+        total_pips = round(sum(h['pips'] for h in history), 1)
         ax_info.axis("off")
-        info = f"AUTO: {'ON' if is_autoplay else 'OFF'}\nBAL : {balance:,.0f}\nPIPS: {total_pips:>6}p\nLOT : {p_lot:.2f}\nTRADES: {len(history)}\n" + "-"*15 + "\n"
+        info = f"AUTO: {'ON' if is_autoplay else 'OFF'}\n"
+        info += f"BAL : {balance:,.0f}\n"
+        info += f"PIPS: {total_pips:>6}p\n"
+        info += f"LOT : {current_lot:.2f} ({lot_mode})\n"
+        info += f"TRADES: {len(history)}\n" + "-"*15 + "\n"
         for h in history[-8:]: 
             info += f"{h['side']} {h['lot']:.2f}L {h['pips']:>+5.1f}p ({h['profit']:+,.0f})\n"
         
         ax_info.text(0, 1, info, transform=ax_info.transAxes, verticalalignment="top", fontsize=8, fontfamily="monospace")
         fig.canvas.draw_idle()
-    except Exception as e:
-        print(f"描画エラー: {e}")
+    except Exception as e: print(f"描画エラー: {e}")
 
 # =========================
 # 5. イベント処理
 # =========================
 def on_key_press(e):
-    global idx_h1, is_autoplay, autoplay_speed, selected_obj
+    global idx_h1, is_autoplay, autoplay_speed, selected_obj, lot_mode, fixed_lot_size
     pressed.add(e.key)
     step = 10 if "control" in pressed else 1
+    
     if e.key == "a": is_autoplay = not is_autoplay
-    elif e.key == "w": autoplay_speed = max(0.01, autoplay_speed - 0.05)
-    elif e.key == "s": autoplay_speed = min(2.0, autoplay_speed + 0.05)
+    elif e.key == "l":
+        if "control" in pressed:
+            val = simpledialog.askfloat("Lot Setting", "固定ロット数を入力:", initialvalue=fixed_lot_size)
+            if val: fixed_lot_size = val
+        else:
+            lot_mode = "FIX" if lot_mode == "AUTO" else "AUTO"
+            print(f">> ロットモードを {lot_mode} に切り替えました")
     elif e.key == "t":
-        # トレードを維持したまま日時ジャンプ
-        t_str = simpledialog.askstring("Jump", "ジャンプ先の時刻を入力 (YYYY-MM-DD HH:MM):")
+        t_str = simpledialog.askstring("Jump", "時刻入力 (YYYY-MM-DD HH:MM):")
         if t_str:
             try:
                 target_dt = pd.to_datetime(t_str)
                 new_idx = df_h1.index.get_indexer([target_dt], method='pad')[0]
-                
                 if new_idx != -1 and new_idx > idx_h1:
-                    print(f">>> {t_str} へジャンプ中...（期間内の損切りをチェックします）")
-                    # ジャンプ中の全足をスキャンして損切りを判定
                     while idx_h1 < new_idx:
                         idx_h1 += 1
-                        if check_stop_loss():
-                            print(">> ジャンプ中に損切りラインに接触したため、その地点で決済されました。")
-                            break
+                        if check_stop_loss(): break
                     redraw()
                 elif new_idx <= idx_h1:
-                    # 過去へのジャンプは判定なしで移動のみ
                     idx_h1 = max(WINDOW_H1, new_idx)
                     redraw()
-            except Exception as ex:
-                print(f"Jump Error: {ex}")
-    elif e.key == " ": execute_skip()
+            except Exception as ex: print(f"Jump Error: {ex}")
     elif e.key == "right":
         if idx_h1 < len(df_h1)-1: 
             idx_h1 += step
             check_stop_loss()
+    elif e.key == " ": execute_skip()
     elif e.key == "left":
-        idx_h1 = max(WINDOW_H1, idx_h1 - step) # 戻るだけで履歴は消さない
+        idx_h1 = max(WINDOW_H1, idx_h1 - step)
     elif e.key in ["delete", "backspace"] and selected_obj:
         t, i = selected_obj
         if t == 'hline': hlines_data.pop(i)
@@ -244,75 +237,66 @@ def on_button_press(e):
         redraw(); return
     if e.button == 1:
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
+        if lot_mode == "AUTO":
+            entry_lot = max(0.01, round(RISK_PER_TRADE / (abs(curr_p - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if sl_p else 0.1
+        else:
+            entry_lot = fixed_lot_size
+
         if "b" in pressed or "v" in pressed:
             side = "BUY" if "b" in pressed else "SELL"
-            lot = max(0.01, round(RISK_PER_TRADE / (abs(curr_p - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if sl_p else 0.1
-            trade = {"side": side, "price": curr_p, "time": curr_t, "lot": lot, "sl": sl_p, "tp": 0, "symbol": "FX"}
-            markers.append((curr_t, curr_p, "^" if side=="BUY" else "v", "blue" if side=="BUY" else "red"))
+            trade = {"side": side, "price": curr_p, "time": curr_t, "lot": entry_lot, "sl": sl_p, "tp": 0, "symbol": "FX"}
+            markers.append((curr_t, curr_p, "^" if side=="BUY" else "v", "blue" if side=="BUY" else "red", 0.6))
         elif "c" in pressed and trade:
-            pips = (curr_p - trade["price"]) / PIPS_UNIT if trade["side"]=="BUY" else (trade["price"] - curr_p) / PIPS_UNIT
+            pips = round((curr_p - trade["price"]) / PIPS_UNIT if trade["side"]=="BUY" else (trade["price"] - curr_p) / PIPS_UNIT, 1)
             profit = round(pips * ONE_LOT_PIPS_VALUE * trade["lot"], 0)
             history.append({**trade, "exit_p": curr_p, "exit_time": curr_t, "pips": pips, "profit": profit})
-            balance += profit; markers.append((curr_t, curr_p, "x", "black")); trade = None; stop_lines_data.clear()
+            balance += profit
+            # 決済マークを半透明に
+            markers.append((curr_t, curr_p, "x", "black", 0.3))
+            trade = None; stop_lines_data.clear()
         elif "h" in pressed: hlines_data.append([e.ydata, "blue", "-"])
         elif "shift" in pressed: stop_lines_data.clear(); stop_lines_data.append([e.ydata, "red", "--"])
         redraw()
-
+def execute_skip():
+    global idx_h1, is_autoplay
+    is_autoplay = False
+    print(">>> スキップ中...")
+    while idx_h1 < len(df_h1) - 1:
+        idx_h1 += 1
+        if check_stop_loss(): break
+        curr = df_h1.iloc[idx_h1]
+        if any(curr["Low"] <= p <= curr["High"] for p, c, ls in hlines_data): break
+    redraw()
 # =========================
-# 6. CSV保存
+# 6. CSV保存 (指定ラベル)
 # =========================
 def save_csv_files():
     if not history: return
     root = tk.Tk(); root.withdraw()
-    
-    # 既存ファイル選択
-    f_path = filedialog.askopenfilename(title="追記するCSVを選択（新規ならキャンセル）", filetypes=[("CSV","*.csv")])
+    f_path = filedialog.askopenfilename(title="追記するCSVを選択", filetypes=[("CSV","*.csv")])
     if not f_path:
-        # 新規作成
-        f_path = filedialog.asksaveasfilename(title="新規保存名を入力", filetypes=[("CSV","*.csv")], defaultextension=".csv", initialfile="trading_summary.csv")
-    
+        f_path = filedialog.asksaveasfilename(title="新規保存名", filetypes=[("CSV","*.csv")], defaultextension=".csv", initialfile="trading_summary.csv")
     if not f_path: return
-    
+
     base = os.path.splitext(f_path)[0].replace("_summary","").replace("_details","")
-    summary_file = f"{base}_summary.csv"
-    detail_file = f"{base}_details.csv"
+    summary_file, detail_file = f"{base}_summary.csv", f"{base}_details.csv"
     
     df = pd.DataFrame(history)
-    exec_t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # --- 統計計算 ---
     wins_df = df[df['profit'] > 0]
     losses_df = df[df['profit'] <= 0]
     
-    total_profit = wins_df['profit'].sum()
-    total_loss = abs(losses_df['profit'].sum())
-    pf = round(total_profit / total_loss, 2) if total_loss != 0 else (round(total_profit, 2) if total_profit > 0 else 0)
+    pf = round(wins_df['profit'].sum() / abs(losses_df['profit'].sum()), 2) if not losses_df.empty else 0
+    rr = round(wins_df['pips'].mean() / abs(losses_df['pips'].mean()), 2) if not losses_df.empty else 0
     
-    # リスクリワード (平均利益 / 平均損失)
-    avg_win_pips = wins_df['pips'].mean() if not wins_df.empty else 0
-    avg_loss_pips = abs(losses_df['pips'].mean()) if not losses_df.empty else 0
-    rr = round(avg_win_pips / avg_loss_pips, 2) if avg_loss_pips != 0 else 0
-    
-    # 連勝・連敗計算
-    win_loss_list = [1 if p > 0 else 0 for p in df['profit']]
-    max_win_streak = 0
-    max_loss_streak = 0
-    current_win = 0
-    current_loss = 0
-    
-    for val in win_loss_list:
-        if val == 1:
-            current_win += 1
-            current_loss = 0
-        else:
-            current_loss += 1
-            current_win = 0
-        max_win_streak = max(max_win_streak, current_win)
-        max_loss_streak = max(max_loss_streak, current_loss)
+    wl = [1 if p > 0 else 0 for p in df['profit']]
+    mw, ml, cw, cl = 0, 0, 0, 0
+    for v in wl:
+        if v == 1: cw += 1; cl = 0
+        else: cl += 1; cw = 0
+        mw, ml = max(mw, cw), max(ml, cl)
 
-    # 指定されたラベルに合わせた辞書
     summary = {
-        "Execution_RealTime": exec_t,
+        "Execution_RealTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Start_Trade_Time": df['time'].min(),
         "End_Trade_Time": df['exit_time'].max(),
         "Total_Trades": len(df),
@@ -322,19 +306,14 @@ def save_csv_files():
         "Win_Rate": round(len(wins_df) / len(df) * 100, 1),
         "Risk_Reward": rr,
         "PF": pf,
-        "Win_Streaks": max_win_streak,
-        "Loss_Streaks": max_loss_streak
+        "Win_Streaks": mw,
+        "Loss_Streaks": ml
     }
+    
+    pd.DataFrame([summary]).to_csv(summary_file, mode='a', index=False, header=not os.path.exists(summary_file), encoding='utf-8-sig')
+    df.to_csv(detail_file, mode='a', index=False, header=not os.path.exists(detail_file), encoding='utf-8-sig')
+    messagebox.showinfo("完了", f"保存完了: Pips {summary['Total_Pips']}, PF {pf}")
 
-    # Summary保存
-    pd.DataFrame([summary]).to_csv(summary_file, mode='a', index=False, 
-                                   header=not os.path.exists(summary_file), encoding='utf-8-sig')
-    
-    # Details保存
-    df.to_csv(detail_file, mode='a', index=False, 
-              header=not os.path.exists(detail_file), encoding='utf-8-sig')
-    
-    messagebox.showinfo("完了", f"統計を保存しました:\nPF: {pf}, 連勝: {max_win_streak}, 連敗: {max_loss_streak}")
 def on_close(event):
     if history and messagebox.askyesno("保存", "CSVに記録しますか？"): save_csv_files()
     plt.close()
