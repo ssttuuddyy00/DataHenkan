@@ -131,35 +131,80 @@ def execute_skip():
         if any(curr["Low"] <= p <= curr["High"] for p, c, ls in hlines_data): break
     redraw()
 
-def redraw():
-    global balance, idx_h1
-    try:
-        h1_data = df_h1.iloc[idx_h1 - WINDOW_H1 : idx_h1 + 1]
-        v_times, v_price = h1_data.index.tolist(), h1_data.iloc[-1]["Close"]
-        ax_mn.clear(); ax_d1.clear(); ax_h1.clear(); ax_info.clear()
-        d1_data = df_d1[df_d1.index <= v_times[-1]].iloc[-WINDOW_D1:]
-        mn_data = df_mn[df_mn.index <= v_times[-1]].iloc[-WINDOW_MN:]
-        mpf.plot(h1_data, ax=ax_h1, type="candle", style="yahoo")
-        mpf.plot(d1_data, ax=ax_d1, type="candle", style="yahoo")
-        mpf.plot(mn_data, ax=ax_mn, type="candle", style="yahoo")
+def save_csv_files():
+    if not history: return
+    root = tk.Tk(); root.withdraw()
+    
+    # 既存ファイル選択
+    f_path = filedialog.askopenfilename(title="追記するCSVを選択（新規ならキャンセル）", filetypes=[("CSV","*.csv")])
+    if not f_path:
+        # 新規作成
+        f_path = filedialog.asksaveasfilename(title="新規保存名を入力", filetypes=[("CSV","*.csv")], defaultextension=".csv", initialfile="trading_summary.csv")
+    
+    if not f_path: return
+    
+    base = os.path.splitext(f_path)[0].replace("_summary","").replace("_details","")
+    summary_file = f"{base}_summary.csv"
+    detail_file = f"{base}_details.csv"
+    
+    df = pd.DataFrame(history)
+    exec_t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # --- 統計計算 ---
+    wins_df = df[df['profit'] > 0]
+    losses_df = df[df['profit'] <= 0]
+    
+    total_profit = wins_df['profit'].sum()
+    total_loss = abs(losses_df['profit'].sum())
+    pf = round(total_profit / total_loss, 2) if total_loss != 0 else (round(total_profit, 2) if total_profit > 0 else 0)
+    
+    # リスクリワード (平均利益 / 平均損失)
+    avg_win_pips = wins_df['pips'].mean() if not wins_df.empty else 0
+    avg_loss_pips = abs(losses_df['pips'].mean()) if not losses_df.empty else 0
+    rr = round(avg_win_pips / avg_loss_pips, 2) if avg_loss_pips != 0 else 0
+    
+    # 連勝・連敗計算
+    win_loss_list = [1 if p > 0 else 0 for p in df['profit']]
+    max_win_streak = 0
+    max_loss_streak = 0
+    current_win = 0
+    current_loss = 0
+    
+    for val in win_loss_list:
+        if val == 1:
+            current_win += 1
+            current_loss = 0
+        else:
+            current_loss += 1
+            current_win = 0
+        max_win_streak = max(max_win_streak, current_win)
+        max_loss_streak = max(max_loss_streak, current_loss)
 
-        for ax in [ax_h1, ax_d1, ax_mn]:
-            for i, (p, c, ls) in enumerate(hlines_data + stop_lines_data):
-                sel = selected_obj == ('stop' if i >= len(hlines_data) else 'hline', i if i < len(hlines_data) else i - len(hlines_data))
-                ax.add_line(Line2D([0, 1], [p, p], transform=ax.get_yaxis_transform(), color="orange" if sel else c, linestyle=ls, linewidth=2 if sel else 1))
-        
-        for mt, mp, ms, mc in markers:
-            if mt in v_times: ax_h1.scatter(v_times.index(mt), mp, marker=ms, color=mc, s=100, zorder=5)
+    # 指定されたラベルに合わせた辞書
+    summary = {
+        "Execution_RealTime": exec_t,
+        "Start_Trade_Time": df['time'].min(),
+        "End_Trade_Time": df['exit_time'].max(),
+        "Total_Trades": len(df),
+        "Total_Pips": round(df['pips'].sum(), 1),
+        "Profit_JPY": round(df['profit'].sum(), 0),
+        "Final_Balance": round(balance, 0),
+        "Win_Rate": round(len(wins_df) / len(df) * 100, 1),
+        "Risk_Reward": rr,
+        "PF": pf,
+        "Win_Streaks": max_win_streak,
+        "Loss_Streaks": max_loss_streak
+    }
 
-        sl_p = stop_lines_data[0][0] if stop_lines_data else 0
-        p_lot = max(0.01, round(RISK_PER_TRADE / (abs(v_price - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if sl_p else 0.1
-        ax_info.axis("off")
-        info = f"AUTO: {'ON' if is_autoplay else 'OFF'}\nBAL : {balance:,.0f}\nLOT : {p_lot:.2f}\nTRADES: {len(history)}\n" + "-"*12 + "\n"
-        for h in history[-5:]: info += f"{h['side']} {h['profit']:+,.0f}\n"
-        ax_info.text(0, 1, info, transform=ax_info.transAxes, verticalalignment="top", fontsize=9, fontfamily="monospace")
-        fig.canvas.draw_idle()
-    except Exception as e: print(f"描画エラー: {e}")
-
+    # Summary保存
+    pd.DataFrame([summary]).to_csv(summary_file, mode='a', index=False, 
+                                   header=not os.path.exists(summary_file), encoding='utf-8-sig')
+    
+    # Details保存
+    df.to_csv(detail_file, mode='a', index=False, 
+              header=not os.path.exists(detail_file), encoding='utf-8-sig')
+    
+    messagebox.showinfo("完了", f"統計を保存しました:\nPF: {pf}, 連勝: {max_win_streak}, 連敗: {max_loss_streak}")
 # =========================
 # 5. イベント処理
 # =========================
