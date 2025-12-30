@@ -21,32 +21,48 @@ INITIAL_BALANCE = 1500000.0
 RISK_PER_TRADE = 10000.0
 
 # =========================
-# 2. マウスホイール日時セレクター
+# 2. 起動時設定ダイアログ
 # =========================
-class DateTimeWheelPicker:
+class StartupSettings:
     def __init__(self, initial_dt):
         self.root = tk.Tk()
-        self.root.title("リプレイ開始日時を選択")
+        self.root.title("リプレイ設定")
         self.root.attributes("-topmost", True)
-        self.result = initial_dt
-        self.vals = {"Year": initial_dt.year, "Month": initial_dt.month, "Day": initial_dt.day, "Hour": initial_dt.hour}
         
-        frame = ttk.Frame(self.root, padding=20)
-        frame.pack()
+        self.dt_result = initial_dt
+        self.lot_mode = "AUTO"
+        self.fixed_lot = 0.1
+        self.confirmed = False
+
+        # --- 日時選択セクション ---
+        self.vals = {"Year": initial_dt.year, "Month": initial_dt.month, "Day": initial_dt.day, "Hour": initial_dt.hour}
+        dt_frame = ttk.LabelFrame(self.root, text="開始日時 (マウスホイールで操作)", padding=10)
+        dt_frame.pack(padx=10, pady=5, fill="x")
         
         self.labels = {}
-        cols = ["Year", "Month", "Day", "Hour"]
-        for i, col in enumerate(cols):
-            f = ttk.LabelFrame(frame, text=col, padding=10)
+        for i, col in enumerate(["Year", "Month", "Day", "Hour"]):
+            f = ttk.Frame(dt_frame)
             f.grid(row=0, column=i, padx=5)
-            lbl = ttk.Label(f, text=str(self.vals[col]), font=("Arial", 18, "bold"))
+            ttk.Label(f, text=col).pack()
+            lbl = ttk.Label(f, text=str(self.vals[col]), font=("Arial", 14, "bold"))
             lbl.pack()
             self.labels[col] = lbl
-            for target in [lbl, f]:
-                target.bind("<MouseWheel>", lambda e, c=col: self.on_wheel(e, c))
+            lbl.bind("<MouseWheel>", lambda e, c=col: self.on_wheel(e, c))
+
+        # --- ロットモード設定セクション ---
+        lot_frame = ttk.LabelFrame(self.root, text="ロット設定 (トレード中変更不可)", padding=10)
+        lot_frame.pack(padx=10, pady=5, fill="x")
         
-        ttk.Label(frame, text="各項目の上でマウスホイールを回してください").grid(row=1, column=0, columnspan=4, pady=10)
-        ttk.Button(frame, text="この日時でリプレイ開始", command=self.confirm).grid(row=2, column=0, columnspan=4, pady=10)
+        self.mode_var = tk.StringVar(value="AUTO")
+        ttk.Radiobutton(lot_frame, text="変動ロット (損切り幅から算出)", variable=self.mode_var, value="AUTO").pack(anchor="w")
+        ttk.Radiobutton(lot_frame, text="固定ロット", variable=self.mode_var, value="FIX").pack(anchor="w")
+        
+        ttk.Label(lot_frame, text="固定ロット数:").pack(side="left")
+        self.lot_entry = ttk.Entry(lot_frame, width=10)
+        self.lot_entry.insert(0, "0.1")
+        self.lot_entry.pack(side="left", padx=5)
+
+        ttk.Button(self.root, text="リプレイ開始", command=self.confirm).pack(pady=10)
         self.root.mainloop()
 
     def on_wheel(self, event, col):
@@ -59,9 +75,13 @@ class DateTimeWheelPicker:
 
     def confirm(self):
         try:
-            self.result = pd.Timestamp(year=self.vals["Year"], month=self.vals["Month"], day=self.vals["Day"], hour=self.vals["Hour"])
-        except: pass
-        self.root.destroy()
+            self.dt_result = pd.Timestamp(year=self.vals["Year"], month=self.vals["Month"], day=self.vals["Day"], hour=self.vals["Hour"])
+            self.lot_mode = self.mode_var.get()
+            self.fixed_lot = float(self.lot_entry.get())
+            self.confirmed = True
+            self.root.destroy()
+        except Exception as e:
+            messagebox.showerror("Error", f"設定が正しくありません: {e}")
 
 # =========================
 # 3. データ読み込み
@@ -84,9 +104,15 @@ def get_pair_settings(df):
 try:
     df_mn, df_d1, df_h1 = load_csv(MN_PATH), load_csv(D1_PATH), load_csv(H1_PATH)
     PIPS_UNIT, ONE_LOT_PIPS_VALUE = get_pair_settings(df_h1)
-    picker = DateTimeWheelPicker(df_h1.index[WINDOW_H1 + 50])
-    idx_h1 = df_h1.index.get_indexer([picker.result], method='pad')[0]
+    
+    # 起動時設定の呼び出し
+    settings = StartupSettings(df_h1.index[WINDOW_H1 + 50])
+    if not settings.confirmed: exit()
+    
+    idx_h1 = df_h1.index.get_indexer([settings.dt_result], method='pad')[0]
     idx_h1 = max(WINDOW_H1, idx_h1)
+    lot_mode = settings.lot_mode
+    fixed_lot_size = settings.fixed_lot
 except Exception as e:
     print(f"初期化エラー: {e}"); exit()
 
@@ -99,10 +125,6 @@ hlines_data, stop_lines_data = [], []
 markers, history = [], []
 pressed = set()
 selected_obj, dragging = None, False
-
-# ロット管理用
-lot_mode = "AUTO" # "AUTO" or "FIX"
-fixed_lot_size = 0.1
 
 # =========================
 # 4. 判定・操作ロジック
@@ -118,9 +140,7 @@ def check_stop_loss():
         profit = round(pips * ONE_LOT_PIPS_VALUE * trade["lot"], 0)
         history.append({**trade, "exit_p": sl_p, "exit_time": curr.name, "pips": pips, "profit": profit})
         balance += profit
-        # 損切りマークも半透明に
         markers.append((curr.name, sl_p, "x", "black", 0.3))
-        print(f">> 【損切り】{curr.name} / {pips}p ({profit:,.0f}円)")
         trade = None; stop_lines_data.clear()
         return True
     return False
@@ -133,7 +153,6 @@ def redraw():
         current_time = v_times[-1]
         v_price = h1_data.iloc[-1]["Close"]
         
-        # 上位足フィルタ：現在時刻を含む期間は表示しない
         day_start = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
         d1_visible = df_d1[df_d1.index < day_start].iloc[-WINDOW_D1:]
         month_start = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -149,28 +168,18 @@ def redraw():
                 sel = selected_obj == ('stop' if i >= len(hlines_data) else 'hline', i if i < len(hlines_data) else i - len(hlines_data))
                 ax.add_line(Line2D([0, 1], [p, p], transform=ax.get_yaxis_transform(), color="orange" if sel else c, linestyle=ls, linewidth=2 if sel else 1))
         
-        # マーカー描画：不透明度(alpha)と重なり順(zorder)を調整
         for item in markers:
             mt, mp, ms, mc = item[0], item[1], item[2], item[3]
-            ma = item[4] if len(item) > 4 else 1.0 # alpha値があれば使う
+            ma = item[4] if len(item) > 4 else 1.0
             if mt in v_times:
-                # zorder=1にすることで、ローソク足(zorder=3程度)の後ろに隠れるようにする
                 ax_h1.scatter(v_times.index(mt), mp, marker=ms, color=mc, s=80, alpha=ma, zorder=1)
 
-        # ロット計算
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
-        if lot_mode == "AUTO":
-            current_lot = max(0.01, round(RISK_PER_TRADE / (abs(v_price - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if sl_p else 0.1
-        else:
-            current_lot = fixed_lot_size
+        current_lot = max(0.01, round(RISK_PER_TRADE / (abs(v_price - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode == "AUTO" and sl_p else (fixed_lot_size if lot_mode == "FIX" else 0.1)
 
         total_pips = round(sum(h['pips'] for h in history), 1)
         ax_info.axis("off")
-        info = f"AUTO: {'ON' if is_autoplay else 'OFF'}\n"
-        info += f"BAL : {balance:,.0f}\n"
-        info += f"PIPS: {total_pips:>6}p\n"
-        info += f"LOT : {current_lot:.2f} ({lot_mode})\n"
-        info += f"TRADES: {len(history)}\n" + "-"*15 + "\n"
+        info = f"AUTO: {'ON' if is_autoplay else 'OFF'}\nBAL : {balance:,.0f}\nPIPS: {total_pips:>6}p\nLOT : {current_lot:.2f} ({lot_mode})\nTRADES: {len(history)}\n" + "-"*15 + "\n"
         for h in history[-8:]: 
             info += f"{h['side']} {h['lot']:.2f}L {h['pips']:>+5.1f}p ({h['profit']:+,.0f})\n"
         
@@ -182,18 +191,12 @@ def redraw():
 # 5. イベント処理
 # =========================
 def on_key_press(e):
-    global idx_h1, is_autoplay, autoplay_speed, selected_obj, lot_mode, fixed_lot_size
+    global idx_h1, is_autoplay, autoplay_speed, selected_obj
     pressed.add(e.key)
     step = 10 if "control" in pressed else 1
     
     if e.key == "a": is_autoplay = not is_autoplay
-    elif e.key == "l":
-        if "control" in pressed:
-            val = simpledialog.askfloat("Lot Setting", "固定ロット数を入力:", initialvalue=fixed_lot_size)
-            if val: fixed_lot_size = val
-        else:
-            lot_mode = "FIX" if lot_mode == "AUTO" else "AUTO"
-            print(f">> ロットモードを {lot_mode} に切り替えました")
+    elif e.key == " ": execute_skip()
     elif e.key == "t":
         t_str = simpledialog.askstring("Jump", "時刻入力 (YYYY-MM-DD HH:MM):")
         if t_str:
@@ -213,7 +216,6 @@ def on_key_press(e):
         if idx_h1 < len(df_h1)-1: 
             idx_h1 += step
             check_stop_loss()
-    elif e.key == " ": execute_skip()
     elif e.key == "left":
         idx_h1 = max(WINDOW_H1, idx_h1 - step)
     elif e.key in ["delete", "backspace"] and selected_obj:
@@ -237,10 +239,7 @@ def on_button_press(e):
         redraw(); return
     if e.button == 1:
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
-        if lot_mode == "AUTO":
-            entry_lot = max(0.01, round(RISK_PER_TRADE / (abs(curr_p - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if sl_p else 0.1
-        else:
-            entry_lot = fixed_lot_size
+        entry_lot = max(0.01, round(RISK_PER_TRADE / (abs(curr_p - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode == "AUTO" and sl_p else (fixed_lot_size if lot_mode == "FIX" else 0.1)
 
         if "b" in pressed or "v" in pressed:
             side = "BUY" if "b" in pressed else "SELL"
@@ -250,13 +249,11 @@ def on_button_press(e):
             pips = round((curr_p - trade["price"]) / PIPS_UNIT if trade["side"]=="BUY" else (trade["price"] - curr_p) / PIPS_UNIT, 1)
             profit = round(pips * ONE_LOT_PIPS_VALUE * trade["lot"], 0)
             history.append({**trade, "exit_p": curr_p, "exit_time": curr_t, "pips": pips, "profit": profit})
-            balance += profit
-            # 決済マークを半透明に
-            markers.append((curr_t, curr_p, "x", "black", 0.3))
-            trade = None; stop_lines_data.clear()
+            balance += profit; markers.append((curr_t, curr_p, "x", "black", 0.3)); trade = None; stop_lines_data.clear()
         elif "h" in pressed: hlines_data.append([e.ydata, "blue", "-"])
         elif "shift" in pressed: stop_lines_data.clear(); stop_lines_data.append([e.ydata, "red", "--"])
         redraw()
+
 def execute_skip():
     global idx_h1, is_autoplay
     is_autoplay = False
@@ -267,9 +264,7 @@ def execute_skip():
         curr = df_h1.iloc[idx_h1]
         if any(curr["Low"] <= p <= curr["High"] for p, c, ls in hlines_data): break
     redraw()
-# =========================
-# 6. CSV保存 (指定ラベル)
-# =========================
+    
 def save_csv_files():
     if not history: return
     root = tk.Tk(); root.withdraw()
@@ -280,14 +275,11 @@ def save_csv_files():
 
     base = os.path.splitext(f_path)[0].replace("_summary","").replace("_details","")
     summary_file, detail_file = f"{base}_summary.csv", f"{base}_details.csv"
-    
     df = pd.DataFrame(history)
     wins_df = df[df['profit'] > 0]
     losses_df = df[df['profit'] <= 0]
-    
     pf = round(wins_df['profit'].sum() / abs(losses_df['profit'].sum()), 2) if not losses_df.empty else 0
     rr = round(wins_df['pips'].mean() / abs(losses_df['pips'].mean()), 2) if not losses_df.empty else 0
-    
     wl = [1 if p > 0 else 0 for p in df['profit']]
     mw, ml, cw, cl = 0, 0, 0, 0
     for v in wl:
@@ -304,15 +296,11 @@ def save_csv_files():
         "Profit_JPY": round(df['profit'].sum(), 0),
         "Final_Balance": round(balance, 0),
         "Win_Rate": round(len(wins_df) / len(df) * 100, 1),
-        "Risk_Reward": rr,
-        "PF": pf,
-        "Win_Streaks": mw,
-        "Loss_Streaks": ml
+        "Risk_Reward": rr, "PF": pf, "Win_Streaks": mw, "Loss_Streaks": ml
     }
-    
     pd.DataFrame([summary]).to_csv(summary_file, mode='a', index=False, header=not os.path.exists(summary_file), encoding='utf-8-sig')
     df.to_csv(detail_file, mode='a', index=False, header=not os.path.exists(detail_file), encoding='utf-8-sig')
-    messagebox.showinfo("完了", f"保存完了: Pips {summary['Total_Pips']}, PF {pf}")
+    messagebox.showinfo("完了", f"保存完了: Pips {summary['Total_Pips']}")
 
 def on_close(event):
     if history and messagebox.askyesno("保存", "CSVに記録しますか？"): save_csv_files()
