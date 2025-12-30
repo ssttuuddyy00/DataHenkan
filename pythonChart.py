@@ -53,7 +53,7 @@ class StartupSettings:
         lot_frame = ttk.LabelFrame(self.root, text="ロット設定 (トレード中変更不可)", padding=10)
         lot_frame.pack(padx=10, pady=5, fill="x")
         
-        self.mode_var = tk.StringVar(value="AUTO")
+        self.mode_var = tk.StringVar(value="FIX")
         ttk.Radiobutton(lot_frame, text="変動ロット (損切り幅から算出)", variable=self.mode_var, value="AUTO").pack(anchor="w")
         ttk.Radiobutton(lot_frame, text="固定ロット", variable=self.mode_var, value="FIX").pack(anchor="w")
         
