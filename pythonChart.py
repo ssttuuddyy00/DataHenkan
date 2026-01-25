@@ -198,17 +198,36 @@ def redraw():
             if mt in v_times:
                 ax_h1.scatter(v_times.index(mt), mp, marker=ms, color=mc, s=80, alpha=ma, zorder=1)
         # 情報パネルにモードを表示（info変数の作成箇所に挿入）
+        
         if fibo_mode: info += f"MODE: {fibo_mode} ({len(fibo_points)}pt)\n"
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
         current_lot = max(0.01, round(RISK_PER_TRADE / (abs(v_price - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode == "AUTO" and sl_p else (fixed_lot_size if lot_mode == "FIX" else 0.1)
 
+        # 1. 統計の計算
         total_pips = round(sum(h['pips'] for h in history), 1)
+        
+        # 2. 情報パネルの初期化（まずは空にするか、最初の1行を入れる）
         ax_info.axis("off")
-        info = f"AUTO: {'ON' if is_autoplay else 'OFF'}\nBAL : {balance:,.0f}\nPIPS: {total_pips:>6}p\nLOT : {current_lot:.2f} ({lot_mode})\nTRADES: {len(history)}\n" + "-"*15 + "\n"
+        info = f"AUTO: {'ON' if is_autoplay else 'OFF'}\n" # ここで info を初めて定義
+
+        # 3. フィボナッチ描画中なら、そのモードを「追加」する
+        if fibo_mode: 
+            info += f"MODE: {fibo_mode} ({len(fibo_points)}pt)\n"
+
+        # 4. 残りのステータスを順番に「追加」していく
+        info += f"BAL : {balance:,.0f}\n"
+        info += f"PIPS: {total_pips:>6}p\n"
+        info += f"LOT : {current_lot:.2f} ({lot_mode})\n"
+        info += f"TRADES: {len(history)}\n"
+        info += "-"*15 + "\n"
+        
+        # 5. 直近のトレード履歴を追加
         for h in history[-8:]: 
             info += f"{h['side']} {h['lot']:.2f}L {h['pips']:>+5.1f}p ({h['profit']:+,.0f})\n"
         
-        ax_info.text(0, 1, info, transform=ax_info.transAxes, verticalalignment="top", fontsize=8, fontfamily="monospace")
+        # 6. 最後に画面に表示
+        ax_info.text(0, 1, info, transform=ax_info.transAxes, verticalalignment="top", 
+                     fontsize=8, fontfamily="monospace")
         fig.canvas.draw_idle()
     except Exception as e: print(f"描画エラー: {e}")
 
@@ -216,7 +235,7 @@ def redraw():
 # 5. イベント処理
 # =========================
 def on_key_press(e):
-    global idx_h1, is_autoplay, autoplay_speed, selected_obj
+    global idx_h1, is_autoplay, fibo_mode, fibo_points, retracements, extensions
     pressed.add(e.key)
     step = 10 if "control" in pressed else 1
     
@@ -267,7 +286,7 @@ def on_motion(e):
         target_list[selected_obj[1]][0] = e.ydata
         redraw()
 def on_button_press(e):
-    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance    if not e.inaxes or e.xdata is None: return
+    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance   
     
     if not e.inaxes or e.xdata is None: return
     fixed_ylim = e.inaxes.get_ylim()
@@ -279,7 +298,9 @@ def on_button_press(e):
         if fibo_mode == "RETRACE" and len(fibo_points) == 2:
             retracements.append({'p1': fibo_points[0], 'p2': fibo_points[1]}); fibo_mode, fibo_points = None, []
         elif fibo_mode == "EXT" and len(fibo_points) == 3:
-            extensions.appen
+            # ここ！ extensions.appen になっていたのを append に修正
+            extensions.append({'p1': fibo_points[0], 'p2': fibo_points[1], 'p3': fibo_points[2]})
+            fibo_mode, fibo_points = None, []
         redraw()
         return # フィボナッチ操作時は他の処理（エントリー等）をスキップ
     # ボタンを押した瞬間の表示範囲を記憶（軸の変動を防止）
