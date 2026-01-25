@@ -127,6 +127,11 @@ markers, history = [], []
 pressed = set()
 selected_obj, dragging = None, False
 
+# フィボナッチ用
+fibo_mode = None # "RETRACE" or "EXT"
+fibo_points = []
+retracements = [] # list of dicts {p1, p2}
+extensions = []   # list of dicts {p1, p2, p3}
 # =========================
 # 4. 判定・操作ロジック
 # =========================
@@ -164,6 +169,24 @@ def redraw():
         if not d1_visible.empty: mpf.plot(d1_visible, ax=ax_d1, type="candle", style="yahoo")
         if not mn_visible.empty: mpf.plot(mn_visible, ax=ax_mn, type="candle", style="yahoo")
 
+        # フィボナッチ描画
+        for f in retracements:
+            p1, p2 = f['p1'], f['p2']
+            diff = p2 - p1
+            levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0, 1.618]
+            for lv in levels:
+                val = p1 + diff * lv
+                ax_h1.add_line(Line2D([0, 1], [val, val], transform=ax_h1.get_yaxis_transform(), color="darkgoldenrod", alpha=0.5, linestyle="--", linewidth=0.8))
+                ax_h1.text(0.98, val, f"{lv*100:>5.1f}%", transform=ax_h1.get_yaxis_transform(), fontsize=7, color="darkgoldenrod", ha='right')
+        
+        for f in extensions:
+            p1, p2, p3 = f['p1'], f['p2'], f['p3']
+            diff = p2 - p1
+            levels = [0.618, 1.0, 1.618, 2.618]
+            for lv in levels:
+                val = p3 + diff * lv
+                ax_h1.add_line(Line2D([0, 1], [val, val], transform=ax_h1.get_yaxis_transform(), color="forestgreen", alpha=0.5, linestyle="--", linewidth=0.8))
+                ax_h1.text(0.02, val, f"Exp {lv*100:.1f}%", transform=ax_h1.get_yaxis_transform(), fontsize=7, color="forestgreen")
         for ax in [ax_h1, ax_d1, ax_mn]:
             for i, (p, c, ls) in enumerate(hlines_data + stop_lines_data):
                 sel = selected_obj == ('stop' if i >= len(hlines_data) else 'hline', i if i < len(hlines_data) else i - len(hlines_data))
@@ -237,6 +260,13 @@ def on_button_press(e):
     global trade, selected_obj, dragging, balance, fixed_ylim
     if not e.inaxes or e.xdata is None: return
     
+    # フィボナッチ打点
+    if fibo_mode:
+        fibo_points.append(e.ydata)
+        if fibo_mode == "RETRACE" and len(fibo_points) == 2:
+            retracements.append({'p1': fibo_points[0], 'p2': fibo_points[1]}); fibo_mode, fibo_points = None, []
+        elif fibo_mode == "EXT" and len(fibo_points) == 3:
+            extensions.appen
     # ボタンを押した瞬間の表示範囲を記憶（軸の変動を防止）
     fixed_ylim = e.inaxes.get_ylim()
     
