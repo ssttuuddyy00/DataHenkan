@@ -196,34 +196,41 @@ def check_stop_loss():
     return False
 
 def redraw():
-    global balance, idx_base, current_view, fibo_mode, lot_mode, fixed_lot_size    
+    global balance, idx_base, current_view, fibo_mode, lot_mode, fixed_lot_size
     try:
+        # 現在の「1分単位」の時刻
         current_time = df_base.index[idx_base]
         v_price = df_base.iloc[idx_base]["Close"]
         
-        # 1. チャートデータの切り出し
+        # 1. 選択した足の全データを取得
         full_df = DFS[current_view]
-       # 【重要】現在時刻「以下」のデータだけを抽出し、最新のWINDOWサイズ分を切り出す
+        
+        # 2. 【重要】「現在時刻以前」のデータを抽出
+        # これにより、M5なら5分、M15なら15分ごとの確定した足までが表示されます
         plot_df = full_df[full_df.index <= current_time].copy()
-        plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
         
-        ax_main.clear(); ax_info.clear(); ax_info.axis("off")
-        
+        # 3. 未確定の「最新の足」を現在価格(M1のClose)でリアルタイム更新する処理
+        # これを入れないと、M5やM15で次の5分/15分が来るまで価格が止まって見えます
         if not plot_df.empty:
-            # チャート描画
-            mpf.plot(plot_df, ax=ax_main, type="candle", style="yahoo")
-            
-            # 軸の範囲を手動でリセット（チャートが止まって見える現象を回避）
-            ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
-            
-            # タイトルに現在時刻を表示
-            ax_main.set_title(f"VIEW: {current_view} | {current_time}", fontsize=10, loc='left')
-        # 2. メインチャート描画
-        title_str = f"{current_view} Chart | {current_time}"
-        if not plot_df.empty:
-            mpf.plot(plot_df, ax=ax_main, type="candle", style="yahoo")
-            ax_main.set_title(title_str)
+            last_idx = plot_df.index[-1]
+            # M1の価格を、表示中の足の最新値に反映（ヒゲの動きを再現）
+            plot_df.at[last_idx, "Close"] = v_price
+            if v_price > plot_df.at[last_idx, "High"]: plot_df.at[last_idx, "High"] = v_price
+            if v_price < plot_df.at[last_idx, "Low"]: plot_df.at[last_idx, "Low"] = v_price
 
+        # 4. 指定したWINDOWサイズ分だけ切り出し
+        plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
+
+        ax_main.clear() 
+        ax_info.clear()
+        ax_info.axis("off")
+
+        if not plot_df.empty:
+            # 5. チャート描画
+            mpf.plot(plot_df, ax=ax_main, type="candle", style="yahoo")
+            # 軸の範囲を固定してガタつきを抑える
+            ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
+            ax_main.set_title(f"VIEW: {current_view} | {current_time}", fontsize=10, loc='left')
         # 3. フィボナッチ描画
         # (前回のフィボナッチ描画コードをここに配置。ax_h1 を ax_main に書き換え)
         for f in retracements:
