@@ -268,7 +268,23 @@ def on_key_press(e):
     global idx_base, is_autoplay, current_view, fibo_mode, fibo_points    
     pressed.add(e.key)
     step = 10 if "control" in pressed else 1
-    
+    # --- 1. 移動量の計算 ---
+    tf_steps = {"M1": 1, "M5": 5, "M15": 15, "H1": 60, "D1": 1440, "MN": 43200}
+    base_step = tf_steps.get(current_view, 1)
+    move_amount = base_step * (10 if "control" in pressed else 1)
+
+    # --- 2. 実際の移動（ここを1つのブロックにまとめる） ---
+    if e.key == "right":
+        if idx_base + move_amount < len(df_base):
+            idx_base += move_amount  # ここで指定分だけ進める
+            check_stop_loss()
+            redraw()
+            return # 処理を終了して、下の「+1」を通さないようにする
+            
+    elif e.key == "left":
+        idx_base = max(WINDOW_SIZES["M1"], idx_base - move_amount)
+        redraw()
+        return
     if e.key == "a": is_autoplay = not is_autoplay
     # 時間足切り替え（追加）
    
@@ -297,12 +313,7 @@ def on_key_press(e):
                     idx_base = max(WINDOW_SIZES["M1"], new_idx)
                     redraw()
             except Exception as ex: print(f"Jump Error: {ex}")
-    elif e.key == "right":
-        if idx_base < len(df_base)-1: 
-            idx_base += (60 if "control" in pressed else 1) # 1分 or 60分(1時間)送り
-            check_stop_loss()
-    elif e.key == "left":
-        idx_base = max(WINDOW_SIZES["M1"], idx_base - step)
+    
     elif e.key in ["delete", "backspace"] and selected_obj:
         t, i = selected_obj
         if t == 'hline': hlines_data.pop(i)
@@ -315,30 +326,7 @@ def on_key_press(e):
         print(f">> 表示切り替え: {current_view}")
         redraw() # 即座に再描画
         
-    # --- 時間足ごとの移動量を定義 ---
-    # 表示中の時間足に合わせて、M1(idx_base)を何ステップ進めるかを決める
-    tf_steps = {
-        "M1": 1,
-        "M5": 5,
-        "M15": 15,
-        "H1": 60,
-        "D1": 1440,
-        "MN": 43200 # おおよそ1ヶ月
-    }
-    
-    # 現在の表示(current_view)に応じた基本の移動量
-    base_step = tf_steps.get(current_view, 1)
-    
-    # Ctrlキーが押されていたらさらに倍速（例：10本分）
-    move_amount = base_step * (10 if "control" in pressed else 1)
-
-    if e.key == "right":
-        if idx_base + move_amount < len(df_base):
-            idx_base += move_amount
-            check_stop_loss()
-    elif e.key == "left":
-        # 表示本数(WINDOW_SIZES)を下回らないように制限
-        idx_base = max(WINDOW_SIZES["M1"], idx_base - move_amount)
+  
     redraw()
 def on_motion(e):
     global dragging, selected_obj, fixed_ylim
