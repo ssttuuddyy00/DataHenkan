@@ -314,6 +314,31 @@ def on_key_press(e):
         current_view = VIEW_MAP[e.key]
         print(f">> 表示切り替え: {current_view}")
         redraw() # 即座に再描画
+        
+    # --- 時間足ごとの移動量を定義 ---
+    # 表示中の時間足に合わせて、M1(idx_base)を何ステップ進めるかを決める
+    tf_steps = {
+        "M1": 1,
+        "M5": 5,
+        "M15": 15,
+        "H1": 60,
+        "D1": 1440,
+        "MN": 43200 # おおよそ1ヶ月
+    }
+    
+    # 現在の表示(current_view)に応じた基本の移動量
+    base_step = tf_steps.get(current_view, 1)
+    
+    # Ctrlキーが押されていたらさらに倍速（例：10本分）
+    move_amount = base_step * (10 if "control" in pressed else 1)
+
+    if e.key == "right":
+        if idx_base + move_amount < len(df_base):
+            idx_base += move_amount
+            check_stop_loss()
+    elif e.key == "left":
+        # 表示本数(WINDOW_SIZES)を下回らないように制限
+        idx_base = max(WINDOW_SIZES["M1"], idx_base - move_amount)
     redraw()
 def on_motion(e):
     global dragging, selected_obj, fixed_ylim
