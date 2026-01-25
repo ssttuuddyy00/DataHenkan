@@ -133,6 +133,8 @@ try:
     
     if not st.confirmed: exit()
     
+    lot_mode = st.lot_mode
+    fixed_lot_size = st.fixed_lot
     # 指定した日時に最も近いインデックスを探す（method='pad'で過去方向の近似値）
     idx_base = df_base.index.get_indexer([st.dt_result], method='pad')[0]
     
@@ -180,7 +182,7 @@ def check_stop_loss():
     return False
 
 def redraw():
-    global balance, idx_base, current_view, fibo_mode
+    global balance, idx_base, current_view, fibo_mode, lot_mode, fixed_lot_size    
     try:
         current_time = df_base.index[idx_base]
         v_price = df_base.iloc[idx_base]["Close"]
@@ -247,15 +249,7 @@ def on_key_press(e):
     
     if e.key == "a": is_autoplay = not is_autoplay
     # 時間足切り替え（追加）
-    elif e.key == "1": 
-        current_view = "H1"
-        print(">> 表示: H1 (1時間足)")
-    elif e.key == "2": 
-        current_view = "D1"
-        print(">> 表示: D1 (日足)")
-    elif e.key == "3": 
-        current_view = "MN"
-        print(">> 表示: MN (月足)")
+   
     elif e.key == " ": execute_skip()
     elif e.key == "f": # リトレースメント開始
         fibo_mode, fibo_points = "RETRACE", []
@@ -292,6 +286,12 @@ def on_key_press(e):
         if t == 'hline': hlines_data.pop(i)
         elif t == 'stop': stop_lines_data.pop(i)
         selected_obj = None
+  
+    # 1〜6の数字キー判定を確実に
+    if e.key in ["1", "2", "3", "4", "5", "6"]:
+        current_view = VIEW_MAP[e.key]
+        print(f">> 表示切り替え: {current_view}")
+        redraw() # 即座に再描画
     redraw()
 def on_motion(e):
     global dragging, selected_obj, fixed_ylim
@@ -302,7 +302,7 @@ def on_motion(e):
         target_list[selected_obj[1]][0] = e.ydata
         redraw()
 def on_button_press(e):
-    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance    
+    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance, lot_mode, fixed_lot_size   
     if not e.inaxes or e.xdata is None: return
     fixed_ylim = e.inaxes.get_ylim()
     cp, ct = df_base.iloc[idx_base]["Close"], df_base.index[idx_base]    
