@@ -19,7 +19,8 @@ H1_PATH = r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/Cha
 WINDOW_H1, WINDOW_D1, WINDOW_MN = 200, 100, 60
 INITIAL_BALANCE = 1500000.0
 RISK_PER_TRADE = 10000.0
-
+# ドラッグ中の軸固定用変数
+fixed_ylim = None
 # =========================
 # 2. 起動時設定ダイアログ
 # =========================
@@ -224,19 +225,35 @@ def on_key_press(e):
         elif t == 'stop': stop_lines_data.pop(i)
         selected_obj = None
     redraw()
-
+def on_motion(e):
+    global dragging, selected_obj, fixed_ylim
+    if dragging and selected_obj and e.ydata and e.inaxes:
+        # ドラッグ中は記憶した範囲を強制適用して画面の揺れを防ぐ
+        e.inaxes.set_ylim(fixed_ylim)
+        target_list = hlines_data if selected_obj[0] == 'hline' else stop_lines_data
+        target_list[selected_obj[1]][0] = e.ydata
+        redraw()
 def on_button_press(e):
-    global trade, selected_obj, dragging, balance
+    global trade, selected_obj, dragging, balance, fixed_ylim
     if not e.inaxes or e.xdata is None: return
+    
+    # ボタンを押した瞬間の表示範囲を記憶（軸の変動を防止）
+    fixed_ylim = e.inaxes.get_ylim()
+    
     curr_t, curr_p = df_h1.index[idx_h1], df_h1.iloc[idx_h1]["Close"]
+    
+    # 既存ラインの選択判定
     if e.button == 1 and not any(k in pressed for k in ["b","v","c","h","shift"]):
         selected_obj = None
-        yr = e.inaxes.get_ylim()[1] - e.inaxes.get_ylim()[0]
+        yr = fixed_ylim[1] - fixed_ylim[0]
         for i, (p, c, ls) in enumerate(hlines_data + stop_lines_data):
             if abs(p - e.ydata) < yr * 0.03:
-                selected_obj = ('stop' if i >= len(hlines_data) else 'hline', i if i < len(hlines_data) else i - len(hlines_data))
+                selected_obj = ('stop' if i >= len(hlines_data) else 'hline', 
+                                i if i < len(hlines_data) else i - len(hlines_data))
                 dragging = True; break
         redraw(); return
+
+    # 新規ライン描画（HキーやShiftキー時）
     if e.button == 1:
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
         entry_lot = max(0.01, round(RISK_PER_TRADE / (abs(curr_p - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode == "AUTO" and sl_p else (fixed_lot_size if lot_mode == "FIX" else 0.1)
@@ -253,7 +270,10 @@ def on_button_press(e):
         elif "h" in pressed: hlines_data.append([e.ydata, "blue", "-"])
         elif "shift" in pressed: stop_lines_data.clear(); stop_lines_data.append([e.ydata, "red", "--"])
         redraw()
-
+def on_button_release(e):
+    global dragging, fixed_ylim
+    dragging = False
+    fixed_ylim = None # 解放
 def execute_skip():
     global idx_h1, is_autoplay
     is_autoplay = False
