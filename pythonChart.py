@@ -189,13 +189,21 @@ def redraw():
         
         # 1. チャートデータの切り出し
         full_df = DFS[current_view]
-        plot_df = full_df[full_df.index <= current_time].iloc[-WINDOW_SIZES[current_view]:]
-
-        ax_main.clear(); ax_info.clear(); ax_info.axis("off")
-        if not plot_df.empty:
-            mpf.plot(plot_df, ax=ax_main, type="candle", style="yahoo")
-            ax_main.set_title(f"View: {current_view} | {current_time}", fontsize=10)
+       # 【重要】現在時刻「以下」のデータだけを抽出し、最新のWINDOWサイズ分を切り出す
+        plot_df = full_df[full_df.index <= current_time].copy()
+        plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
         
+        ax_main.clear(); ax_info.clear(); ax_info.axis("off")
+        
+        if not plot_df.empty:
+            # チャート描画
+            mpf.plot(plot_df, ax=ax_main, type="candle", style="yahoo")
+            
+            # 軸の範囲を手動でリセット（チャートが止まって見える現象を回避）
+            ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
+            
+            # タイトルに現在時刻を表示
+            ax_main.set_title(f"VIEW: {current_view} | {current_time}", fontsize=10, loc='left')
         # 2. メインチャート描画
         title_str = f"{current_view} Chart | {current_time}"
         if not plot_df.empty:
