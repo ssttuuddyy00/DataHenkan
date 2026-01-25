@@ -17,7 +17,7 @@ PATHS = {
     "D1":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/B_data.csv",
     "H1":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/E_data.csv",
     "M15": r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/F_data.csv",
-    "M5":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/G.csv",
+    "M5":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/G_data.csv",
     "M1":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/H_data.csv"
 }
 
@@ -94,31 +94,45 @@ class StartupSettings:
 # 3. データ読み込み
 # =========================
 def load_csv(path):
+   # キャッシュファイル名を作成 (例: M1_data.csv -> M1_data.pkl)
+    cache_path = path.replace(".csv", ".pkl")
+    
+    # 1. キャッシュが存在すれば、それを読み込む（超高速）
+    if os.path.exists(cache_path):
+        return pd.read_pickle(cache_path)
+    
+    # 2. キャッシュがない場合のみ、元のCSVを読み込む
+    print(f"CSVから初回読み込み中...: {os.path.basename(path)}")
     df = pd.read_csv(path)
     df.columns = [c.capitalize() for c in df.columns]
+    
+    # 日時変換
     t = df.copy()
     t["Day"] = t.get("Day", 1)
     t["Hour"] = t.get("Hour", 0)
     t["Minute"] = t.get("Minute", 0)
     df["Date"] = pd.to_datetime(t[["Year", "Month", "Day", "Hour", "Minute"]])
     
-    # --- ここを追加：日時の重複を削除 ---
+    # 重複削除とソート
     df = df.drop_duplicates(subset="Date", keep="last")
-    # ----------------------------------
-    
     df.set_index("Date", inplace=True)
-    return df[["Open", "High", "Low", "Close"]]
+    df = df[["Open", "High", "Low", "Close"]].sort_index()
+    
+    # 3. 次回のためにキャッシュとして保存
+    df.to_pickle(cache_path)
+    return df
 def get_pair_settings(df):
     sample = df['Close'].iloc[0]
     return (0.01, 1000) if sample > 50 else (0.0001, 1500)
 
 DFS = {}
 try:
+    print("データをロード中... (2回目以降は高速化されます)")
     for tf, path in PATHS.items():
         if os.path.exists(path):
-            temp_df = load_csv(path)
-            # 念のため日時順に並び替え
-            DFS[tf] = temp_df.sort_index()
+            DFS[tf] = load_csv(path)
+        else:
+            print(f"Warning: {tf} ファイルが見つかりません: {path}")
     
     # M1を基準足にする
     df_base = DFS["M1"]
