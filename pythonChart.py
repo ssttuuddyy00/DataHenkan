@@ -197,7 +197,8 @@ def redraw():
             ma = item[4] if len(item) > 4 else 1.0
             if mt in v_times:
                 ax_h1.scatter(v_times.index(mt), mp, marker=ms, color=mc, s=80, alpha=ma, zorder=1)
-
+        # 情報パネルにモードを表示（info変数の作成箇所に挿入）
+        if fibo_mode: info += f"MODE: {fibo_mode} ({len(fibo_points)}pt)\n"
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
         current_lot = max(0.01, round(RISK_PER_TRADE / (abs(v_price - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode == "AUTO" and sl_p else (fixed_lot_size if lot_mode == "FIX" else 0.1)
 
@@ -221,6 +222,15 @@ def on_key_press(e):
     
     if e.key == "a": is_autoplay = not is_autoplay
     elif e.key == " ": execute_skip()
+    elif e.key == "f": # リトレースメント開始
+        fibo_mode, fibo_points = "RETRACE", []
+        print(">> フィボナッチ・リトレースメント: 2点クリックしてください")
+    elif e.key == "e": # エクステンション開始
+        fibo_mode, fibo_points = "EXT", []
+        print(">> フィボナッチ・エクステンション: 3点クリックしてください")
+    elif e.key == "x": # フィボ全消去
+        retracements.clear(); extensions.clear(); fibo_mode = None
+        print(">> フィボナッチをすべて削除しました")
     elif e.key == "t":
         t_str = simpledialog.askstring("Jump", "時刻入力 (YYYY-MM-DD HH:MM):")
         if t_str:
@@ -267,6 +277,8 @@ def on_button_press(e):
             retracements.append({'p1': fibo_points[0], 'p2': fibo_points[1]}); fibo_mode, fibo_points = None, []
         elif fibo_mode == "EXT" and len(fibo_points) == 3:
             extensions.appen
+        redraw()
+        return # フィボナッチ操作時は他の処理（エントリー等）をスキップ
     # ボタンを押した瞬間の表示範囲を記憶（軸の変動を防止）
     fixed_ylim = e.inaxes.get_ylim()
     
