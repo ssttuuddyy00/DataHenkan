@@ -267,8 +267,11 @@ def on_motion(e):
         target_list[selected_obj[1]][0] = e.ydata
         redraw()
 def on_button_press(e):
-    global trade, selected_obj, dragging, balance, fixed_ylim
+    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance    if not e.inaxes or e.xdata is None: return
+    
     if not e.inaxes or e.xdata is None: return
+    fixed_ylim = e.inaxes.get_ylim()
+    cp = df_h1.iloc[idx_h1]["Close"]
     
     # フィボナッチ打点
     if fibo_mode:
