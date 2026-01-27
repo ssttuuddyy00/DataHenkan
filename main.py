@@ -290,7 +290,9 @@ def execute_skip():
     
 
 def on_close(event):
-    if history and messagebox.askyesno("保存", "CSVに記録しますか？"): visualizer.save_csv_files(history, balance)
+    if history and messagebox.askyesno("保存", "CSVに記録しますか？"): 
+        visualizer.save_csv_files(history, balance)
+        visualizer.generate_report() # ← これを追加！
     plt.close()
 
 
