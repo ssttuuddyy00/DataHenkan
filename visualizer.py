@@ -78,8 +78,8 @@ def save_trade_screenshot(df, trade_info, current_view, folder_base="trade_resul
     # 1. 勝ち負けでフォルダを分ける
     sub_folder = "win" if trade_info['profit'] >= 0 else "loss"
     target_dir = os.path.join(folder_base, sub_folder)
-    if not os.path.exists(target_dir): 
-        os.makedirs(target_dir)
+    if not os.path.exists(folder_base): 
+        os.makedirs(folder_base)
     
     # 2. 描画範囲の決定 (エントリーから決済までが見えるように)
     entry_idx = df.index.get_indexer([trade_info['time']], method='pad')[0]
