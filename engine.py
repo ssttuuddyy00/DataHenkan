@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
+import config
 
 # 状態管理
-balance = INITIAL_BALANCE
+balance = config.INITIAL_BALANCE
 is_autoplay = False
 autoplay_speed = 0.5
 trade = None
