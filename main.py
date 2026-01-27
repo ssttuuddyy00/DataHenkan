@@ -90,18 +90,22 @@ def on_key_press(e):
             idx_base += move_amount  # ここで指定分だけ進める
             engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers)
             visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
             return # 処理を終了して、下の「+1」を通さないようにする
             
     elif e.key == "left":
         idx_base = max(WINDOW_SIZES["M1"], idx_base - move_amount)
         visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
         return
     if e.key == "a": is_autoplay = not is_autoplay
@@ -128,16 +132,20 @@ def on_key_press(e):
                         idx_base += 1
                         if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): break
                     visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
                 elif new_idx <= idx_base:
                     idx_base = max(WINDOW_SIZES["M1"], new_idx)
                     visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
             except Exception as ex: print(f"Jump Error: {ex}")
     
@@ -152,16 +160,20 @@ def on_key_press(e):
         current_view = VIEW_MAP[e.key]
         print(f">> 表示切り替え: {current_view}")
         visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 ) # 即座に再描画
         
   
     visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
 def on_motion(e):
     global dragging, selected_obj, fixed_ylim
@@ -171,9 +183,11 @@ def on_motion(e):
         target_list = hlines_data if selected_obj[0] == 'hline' else stop_lines_data
         target_list[selected_obj[1]][0] = e.ydata
         visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
 def on_button_press(e):
     global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance, lot_mode, fixed_lot_size   
@@ -190,9 +204,11 @@ def on_button_press(e):
             extensions.append({'p1': fibo_points[0], 'p2': fibo_points[1], 'p3': fibo_points[2]})
             fibo_mode, fibo_points = None, []
         visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
         return # フィボナッチ操作時は他の処理（エントリー等）をスキップ
     # ボタンを押した瞬間の表示範囲を記憶（軸の変動を防止）
@@ -210,9 +226,11 @@ def on_button_press(e):
                                 i if i < len(hlines_data) else i - len(hlines_data))
                 dragging = True; break
         visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 ); return
 
     # 新規ライン描画（HキーやShiftキー時）
@@ -232,9 +250,11 @@ def on_button_press(e):
         elif "h" in pressed: hlines_data.append([e.ydata, "blue", "-"])
         elif "shift" in pressed: stop_lines_data.clear(); stop_lines_data.append([e.ydata, "red", "--"])
         visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
 def on_button_release(e):
     global dragging, fixed_ylim
@@ -250,9 +270,11 @@ def execute_skip():
         curr = df_base.iloc[idx_base]
         if any(curr["Low"] <= p <= curr["High"] for p, c, ls in hlines_data): break
     visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
     
 
@@ -318,24 +340,30 @@ fig.canvas.mpl_connect("key_press_event", on_key_press)
 fig.canvas.mpl_connect("key_release_event", lambda e: pressed.discard(e.key))
 fig.canvas.mpl_connect("button_press_event", on_button_press)
 fig.canvas.mpl_connect("motion_notify_event", lambda e: (dragging and selected_obj and e.ydata and (globals().update(dragging=True) or ((hlines_data[selected_obj[1]] if selected_obj[0]=='hline' else stop_lines_data[selected_obj[1]]).__setitem__(0, e.ydata)) or visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 ))))
 fig.canvas.mpl_connect("button_release_event", lambda e: globals().update(dragging=False))
 fig.canvas.mpl_connect("close_event", on_close)
 
 timer = fig.canvas.new_timer(interval=int(autoplay_speed * 1000))
 timer.add_callback(lambda: (idx_base < len(df_base)-1 and is_autoplay and (globals().update(idx_base=idx_base+1) or engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers) or visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 ))))
 timer.start()
 
 visualizer.redraw(
-    ax_main, ax_info, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, 
-    balance, is_autoplay, lot_mode, fixed_lot_size
+    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+    hlines_data, stop_lines_data, markers, history, balance, 
+    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    fibo_mode, fibo_points, selected_obj
 )
 plt.show()
