@@ -7,6 +7,7 @@ from tkinter import messagebox, simpledialog, ttk, filedialog
 import datetime
 import os
 import pandas as pd
+import numpy as np
 
 def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj):
     try:
