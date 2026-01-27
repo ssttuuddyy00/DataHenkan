@@ -11,24 +11,58 @@ output_dir = "C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/C
 # 出力ディレクトリが存在しない場合は作成
 os.makedirs(output_dir, exist_ok=True)
 
-# データ読み込み
+# データ読み込み（メモリ効率化）
 print("データを読み込んでいます...")
-df = pd.read_csv(input_file)
+
+# 型を指定してメモリ使用量を削減
+dtype_dict = {
+    'Date': str,
+    'Timestamp': str,
+    'Open': 'float32',
+    'High': 'float32',
+    'Low': 'float32',
+    'Close': 'float32',
+    'Volume': 'float32'
+}
+
+# チャンクサイズを指定して読み込み（メモリ節約）
+try:
+    df = pd.read_csv(input_file, dtype=dtype_dict)
+    print(f"データ読み込み完了: {len(df):,} 行")
+except Exception as e:
+    print(f"エラー: データの読み込みに失敗しました - {e}")
+    exit()
 
 # 日時カラムの処理（データはUTC+9、日本時間）
-df['Date'] = df['Date'].astype(str)
-df['Timestamp'] = df['Timestamp'].astype(str)
+print("日時データを処理中...")
 df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Timestamp'], format='%Y%m%d %H:%M:%S')
 
+# 元のDate, Timestampカラムを削除してメモリ節約
+df = df.drop(['Date', 'Timestamp'], axis=1)
+
 # 月、日、曜日、時間、分の抽出（UTC+9基準）
-df['Year'] = df['DateTime'].dt.year
-df['Month'] = df['DateTime'].dt.month
-df['Day'] = df['DateTime'].dt.day
-df['DayOfWeek'] = df['DateTime'].dt.dayofweek  # 0=月曜日
-df['Hour'] = df['DateTime'].dt.hour
-df['Minute'] = df['DateTime'].dt.minute
+print("時間情報を抽出中...")
+df['Year'] = df['DateTime'].dt.year.astype('int16')
+df['Month'] = df['DateTime'].dt.month.astype('int8')
+df['Day'] = df['DateTime'].dt.day.astype('int8')
+df['DayOfWeek'] = df['DateTime'].dt.dayofweek.astype('int8')  # 0=月曜日
+df['Minute'] = df['DateTime'].dt.minute.astype('int8')
+
+# 曜日の日本語名を取得
+df['Weekday'] = df['DayOfWeek'].map({
+    0: '月曜日',
+    1: '火曜日',
+    2: '水曜日',
+    3: '木曜日',
+    4: '金曜日',
+    5: '土曜日',
+    6: '日曜日'
+})
+
+df['Hour'] = df['DateTime'].dt.hour.astype('int8')
 
 # セッション判定関数（UTC+9 / 日本時間基準）
+print("セッション情報を計算中...")
 def get_session(hour):
     if 9 <= hour < 16:
         return '日本'
@@ -41,39 +75,63 @@ def get_session(hour):
 
 df['Session'] = df['Hour'].apply(get_session)
 
+# 時間範囲の計算
+print("時間範囲を計算中...")
+
 # 4時間ごとの時間帯
 df['Hour4Group'] = (df['Hour'] // 4) * 4
-df['Hour4Range'] = df['Hour4Group'].astype(str).str.zfill(2) + ':00-' + ((df['Hour4Group'] + 4) % 24).astype(str).str.zfill(2) + ':00'
+df['Hour4End'] = (df['Hour4Group'] + 4) % 24
+df['Hour4Range'] = df['Hour4Group'].astype(str).str.zfill(2) + ':00-' + df['Hour4End'].astype(str).str.zfill(2) + ':00'
 
 # 1時間ごとの時間帯
-df['Hour1Range'] = df['Hour'].astype(str).str.zfill(2) + ':00-' + ((df['Hour'] + 1) % 24).astype(str).str.zfill(2) + ':00'
+df['Hour1End'] = (df['Hour'] + 1) % 24
+df['Hour1Range'] = df['Hour'].astype(str).str.zfill(2) + ':00-' + df['Hour1End'].astype(str).str.zfill(2) + ':00'
 
 # 15分ごとの時間帯
 df['Minute15Group'] = (df['Minute'] // 15) * 15
+df['Minute15End'] = (df['Minute15Group'] + 15) % 60
+df['Hour15End'] = df['Hour'] + ((df['Minute15Group'] + 15) // 60)
+df['Hour15End'] = df['Hour15End'] % 24
 df['Minute15Range'] = (df['Hour'].astype(str).str.zfill(2) + ':' + 
                         df['Minute15Group'].astype(str).str.zfill(2) + '-' +
-                        df['Hour'].astype(str).str.zfill(2) + ':' + 
-                        ((df['Minute15Group'] + 15) % 60).astype(str).str.zfill(2))
+                        df['Hour15End'].astype(str).str.zfill(2) + ':' + 
+                        df['Minute15End'].astype(str).str.zfill(2))
 
 # 5分ごとの時間帯
 df['Minute5Group'] = (df['Minute'] // 5) * 5
+df['Minute5End'] = (df['Minute5Group'] + 5) % 60
+df['Hour5End'] = df['Hour'] + ((df['Minute5Group'] + 5) // 60)
+df['Hour5End'] = df['Hour5End'] % 24
 df['Minute5Range'] = (df['Hour'].astype(str).str.zfill(2) + ':' + 
                        df['Minute5Group'].astype(str).str.zfill(2) + '-' +
-                       df['Hour'].astype(str).str.zfill(2) + ':' + 
-                       ((df['Minute5Group'] + 5) % 60).astype(str).str.zfill(2))
+                       df['Hour5End'].astype(str).str.zfill(2) + ':' + 
+                       df['Minute5End'].astype(str).str.zfill(2))
 
 # 1分ごとの時間帯
+df['Minute1End'] = (df['Minute'] + 1) % 60
+df['Hour1MinEnd'] = df['Hour'] + ((df['Minute'] + 1) // 60)
+df['Hour1MinEnd'] = df['Hour1MinEnd'] % 24
 df['Minute1Range'] = (df['Hour'].astype(str).str.zfill(2) + ':' + 
                        df['Minute'].astype(str).str.zfill(2) + '-' +
-                       df['Hour'].astype(str).str.zfill(2) + ':' + 
-                       ((df['Minute'] + 1) % 60).astype(str).str.zfill(2))
+                       df['Hour1MinEnd'].astype(str).str.zfill(2) + ':' + 
+                       df['Minute1End'].astype(str).str.zfill(2))
 
 # 30分ごとの時間帯
 df['Minute30Group'] = (df['Minute'] // 30) * 30
+df['Minute30End'] = (df['Minute30Group'] + 30) % 60
+df['Hour30End'] = df['Hour'] + ((df['Minute30Group'] + 30) // 60)
+df['Hour30End'] = df['Hour30End'] % 24
 df['Minute30Range'] = (df['Hour'].astype(str).str.zfill(2) + ':' + 
                         df['Minute30Group'].astype(str).str.zfill(2) + '-' +
-                        df['Hour'].astype(str).str.zfill(2) + ':' + 
-                        ((df['Minute30Group'] + 30) % 60).astype(str).str.zfill(2))
+                        df['Hour30End'].astype(str).str.zfill(2) + ':' + 
+                        df['Minute30End'].astype(str).str.zfill(2))
+
+# 不要な中間カラムを削除してメモリ節約
+print("不要なデータを削除中...")
+df = df.drop(['DateTime', 'DayOfWeek', 'Hour4End', 'Hour1End', 'Hour15End', 'Hour5End', 
+              'Hour1MinEnd', 'Hour30End', 'Minute15End', 'Minute5End', 'Minute1End', 
+              'Minute30End', 'Hour4Group', 'Minute15Group', 'Minute5Group', 'Minute30Group'], 
+             axis=1, errors='ignore')
 
 # 集約関数
 agg_dict = {
@@ -91,6 +149,7 @@ def standardize_columns(data):
         'Year': 'Year',
         'Month': 'Month',
         'Day': 'Day',
+        'Weekday': 'Weekday',
         'Session': 'Session',
         'Hour4Range': 'TimeRange',
         'Hour1Range': 'TimeRange',
@@ -114,14 +173,14 @@ def standardize_columns(data):
 # グループ化のキー定義
 group_keys = {
     'A': ['Year', 'Month'],  # 月
-    'B': ['Year', 'Month', 'Day'],  # 日
-    'C': ['Year', 'Month', 'Day', 'Session'],  # セッション
-    'D': ['Year', 'Month', 'Day', 'Hour4Range'],  # 4時間
-    'E': ['Year', 'Month', 'Day', 'Hour', 'Hour1Range'],  # 1時間
-    'F': ['Year', 'Month', 'Day', 'Hour', 'Minute15Range'],  # 15分
-    'G': ['Year', 'Month', 'Day', 'Hour', 'Minute5Range'],  # 5分
-    'H': ['Year', 'Month', 'Day', 'Hour', 'Minute', 'Minute1Range'],  # 1分
-    'I': ['Year', 'Month', 'Day', 'Hour', 'Minute30Range']  # 30分
+    'B': ['Year', 'Month', 'Day', 'Weekday'],  # 日
+    'C': ['Year', 'Month', 'Day', 'Weekday', 'Session'],  # セッション
+    'D': ['Year', 'Month', 'Day', 'Weekday', 'Hour4Range'],  # 4時間
+    'E': ['Year', 'Month', 'Day', 'Weekday', 'Hour', 'Hour1Range'],  # 1時間
+    'F': ['Year', 'Month', 'Day', 'Weekday', 'Hour', 'Minute15Range'],  # 15分
+    'G': ['Year', 'Month', 'Day', 'Weekday', 'Hour', 'Minute5Range'],  # 5分
+    'H': ['Year', 'Month', 'Day', 'Weekday', 'Hour', 'Minute', 'Minute1Range'],  # 1分
+    'I': ['Year', 'Month', 'Day', 'Weekday', 'Hour', 'Minute30Range']  # 30分
 }
 
 print("\nデータファイルを作成しています...")
