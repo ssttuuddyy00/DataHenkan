@@ -181,3 +181,48 @@ def save_trade_screenshot(df, trade_info, current_view, folder_base="trade_resul
     # 描画して保存（mpfを使うと楽です）
     mpf.plot(subset, type='candle', style='yahoo', savefig=filename)
     print(f"画像保存完了: {filename}")
+
+def generate_report(folder_base="trade_results"):
+    report_path = os.path.join(folder_base, "report.html")
+    
+    html_content = """
+    <html>
+    <head>
+        <title>Trade Review Report</title>
+        <style>
+            body { font-family: Arial, sans-serif; background-color: #f0f0f0; text-align: center; }
+            .trade-container { background: white; margin: 20px auto; padding: 15px; border-radius: 8px; max-width: 900px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+            img { max-width: 100%; height: auto; border: 1px solid #ddd; }
+            h1 { color: #333; }
+            .win { color: blue; } .loss { color: red; }
+        </style>
+    </head>
+    <body>
+        <h1>トレード検証レポート</h1>
+    """
+
+    # WinとLossのフォルダを走査して画像を探す
+    for result_type in ["win", "loss"]:
+        dir_path = os.path.join(folder_base, result_type)
+        if not os.path.exists(dir_path): continue
+        
+        html_content += f"<h2 class='{result_type}'>{result_type.upper()} Trades</h2>"
+        
+        # 画像ファイルを取得してHTMLに追加
+        images = [f for f in os.listdir(dir_path) if f.endswith('.png')]
+        images.sort(reverse=True) # 新しい順
+        
+        for img_name in images:
+            img_rel_path = f"{result_type}/{img_name}"
+            html_content += f"""
+            <div class="trade-container">
+                <p>ファイル名: {img_name}</p>
+                <img src="{img_rel_path}" alt="trade">
+            </div>
+            """
+
+    html_content += "</body></html>"
+
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print(f"レポートを作成しました: {report_path}")
