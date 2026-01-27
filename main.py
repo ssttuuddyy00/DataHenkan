@@ -130,7 +130,11 @@ def on_key_press(e):
                 if new_idx != -1 and new_idx > idx_base:
                     while idx_base < new_idx:
                         idx_base += 1
-                        if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): break
+                        if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
+                            # ★ ここに画像保存を追加！ ★
+                            if history[-1]['profit'] < 0:
+                                visualizer.save_trade_screenshot(df_base, history[-1])
+                            break
                     visualizer.redraw(
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
@@ -246,6 +250,9 @@ def on_button_press(e):
             pips = round((curr_p - trade["price"]) / PIPS_UNIT if trade["side"]=="BUY" else (trade["price"] - curr_p) / PIPS_UNIT, 1)
             profit = round(pips * ONE_LOT_PIPS_VALUE * trade["lot"], 0)
             history.append({**trade, "exit_p": curr_p, "exit_time": curr_t, "pips": pips, "profit": profit})
+            # ★ ここに画像保存を追加！ ★
+            if profit < 0: # 負けトレードなら
+                visualizer.save_trade_screenshot(df_base, history[-1])
             balance += profit; markers.append((curr_t, curr_p, "x", "black", 0.3)); trade = None; stop_lines_data.clear()
         elif "h" in pressed: hlines_data.append([e.ydata, "blue", "-"])
         elif "shift" in pressed: stop_lines_data.clear(); stop_lines_data.append([e.ydata, "red", "--"])
@@ -266,7 +273,11 @@ def execute_skip():
     print(">>> スキップ中...")
     while idx_base < len(df_base) - 1:
         idx_base += 1
-        if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): break
+        if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
+            # ★ ここに画像保存を追加！ ★
+            if history[-1]['profit'] < 0:
+                visualizer.save_trade_screenshot(df_base, history[-1])
+            break
         curr = df_base.iloc[idx_base]
         if any(curr["Low"] <= p <= curr["High"] for p, c, ls in hlines_data): break
     visualizer.redraw(

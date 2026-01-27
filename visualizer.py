@@ -71,3 +71,19 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
         
         fig.canvas.draw_idle()
     except Exception as e: print(f"描画エラー: {e}")
+
+
+def save_trade_screenshot(df, trade_info, folder="loss_images"):
+    if not os.path.exists(folder): os.makedirs(folder)
+    
+    # トレードの前後を表示範囲にする
+    start = max(0, df.index.get_loc(trade_info['time']) - 30)
+    end = min(len(df)-1, df.index.get_loc(trade_info['exit_time']) + 30)
+    subset = df.iloc[start:end]
+    
+    # ファイル名（日時と損益を入れると管理しやすい）
+    filename = f"{folder}/{trade_info['side']}_{trade_info['pips']}pips_{trade_info['id']}.png"
+    
+    # 描画して保存（mpfを使うと楽です）
+    mpf.plot(subset, type='candle', style='yahoo', savefig=filename)
+    print(f"画像保存完了: {filename}")
