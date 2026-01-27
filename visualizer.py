@@ -120,9 +120,10 @@ def save_trade_screenshot(df, trade_info, current_view, folder_base="trade_resul
     end = min(len(df)-1, df.index.get_loc(trade_info['exit_time']) + 30)
     subset = df.iloc[start:end]
     
-    # ファイル名（日時と損益を入れると管理しやすい）
-    filename = f"{folder}/{trade_info['side']}_{trade_info['pips']}pips_{trade_info['id']}.png"
-    
+    # idの代わりに決済時刻(exit_time)をファイル名に使う
+    # 時刻の「:」などはファイル名に使えないので、strftimeで数字だけに変換します
+    time_str = trade_info['exit_time'].strftime("%Y%m%d_%H%M%S")
+    filename = f"{folder}/{time_str}_{trade_info['side']}_{trade_info['pips']}pips.png"
     # 描画して保存（mpfを使うと楽です）
     mpf.plot(subset, type='candle', style='yahoo', savefig=filename)
     print(f"画像保存完了: {filename}")
