@@ -33,13 +33,21 @@ def add_time_info(df_resampled, freq_label):
     
     return df_resampled
 
-# 1. データの読み込み（DateTimeをインデックスとして読み込む）
+# 1. データの読み込み
 print("データを読み込んでいます...")
-df = pd.read_csv(input_file, usecols=['Date', 'Timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
+# dtypeを指定して、DateとTimestampを最初から文字列として読み込む
+df = pd.read_csv(
+    input_file, 
+    usecols=['Date', 'Timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'],
+    dtype={'Date': str, 'Timestamp': str}  # ここが重要！
+)
+
+# 文字列として結合してから変換
+print("日時データを変換中...")
 df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Timestamp'], format='%Y%m%d %H:%M:%S')
+
 df.set_index('DateTime', inplace=True)
 df.drop(['Date', 'Timestamp'], axis=1, inplace=True)
-
 # 集計ルール
 agg_dict = {'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'}
 
