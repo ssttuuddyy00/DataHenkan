@@ -78,6 +78,59 @@ def save_trade_screenshot(df, trade_info, current_view, folder_base="trade_resul
     # 1. 勝ち負けでフォルダを分ける
     sub_folder = "win" if trade_info['profit'] >= 0 else "loss"
     target_dir = os.path.join(folder_base, sub_folder)
+    
+    # フォルダがなければ作成
+    if not os.path.exists(target_dir): 
+        os.makedirs(target_dir, exist_ok=True)
+    
+    # 2. 描画範囲を「エントリーと決済が見える」ように絞る
+    # これにより "WARNING: TOO MUCH DATA" を回避し、ローソク足を太く見やすくします
+    try:
+        entry_idx = df.index.get_indexer([trade_info['time']], method='pad')[0]
+        exit_idx = df.index.get_indexer([trade_info['exit_time']], method='pad')[0]
+        
+        # 前後に少し余裕を持たせる (前後30本ずつ)
+        start_idx = max(0, entry_idx - 30)
+        end_idx = min(len(df) - 1, exit_idx + 30)
+        subset = df.iloc[start_idx:end_idx]
+        
+        # 3. チャート上に印（矢印と×）を付けるための設定
+        # 全データ分 NaN で埋めたリストを作り、特定のインデックスだけ価格を入れる
+        entry_markers = [np.nan] * len(subset)
+        exit_markers = [np.nan] * len(subset)
+        
+        # subset内での相対的な位置を計算
+        entry_pos = entry_idx - start_idx
+        exit_pos = exit_idx - start_idx
+        
+        entry_markers[entry_pos] = trade_info['price']
+        exit_markers[exit_pos] = trade_info['exit_p']
+
+        apds = [
+            # エントリー：青の上矢印（BUY）または赤の下矢印（SELL）
+            mpf.make_addplot(entry_markers, type='scatter', markersize=200, 
+                             marker='^' if trade_info['side']=='BUY' else 'v',
+                             color='blue' if trade_info['side']=='BUY' else 'red'),
+            # 決済：黒の×印
+            mpf.make_addplot(exit_markers, type='scatter', markersize=200, 
+                             marker='x', color='black')
+        ]
+
+        # 4. 保存
+        time_str = trade_info['exit_time'].strftime("%Y%m%d_%H%M%S")
+        filename = f"{target_dir}/{time_str}_{current_view}_{trade_info['pips']}pips.png"
+        
+        mpf.plot(subset, type='candle', style='yahoo', addplot=apds,
+                 title=f"Result: {trade_info['pips']} pips ({current_view})",
+                 savefig=filename, warn_too_much_data=1000)
+        
+        print(f"画像保存完了 [{sub_folder}]: {filename}")
+
+    except Exception as e:
+        print(f"画像保存中にエラーが発生しました: {e}")
+    # 1. 勝ち負けでフォルダを分ける
+    sub_folder = "win" if trade_info['profit'] >= 0 else "loss"
+    target_dir = os.path.join(folder_base, sub_folder)
     if not os.path.exists(folder_base): 
         os.makedirs(folder_base)
     
