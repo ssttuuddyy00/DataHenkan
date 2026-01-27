@@ -73,7 +73,46 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
     except Exception as e: print(f"描画エラー: {e}")
 
 
-def save_trade_screenshot(df, trade_info, folder="loss_images"):
+def save_trade_screenshot(df, trade_info, current_view, folder_base="trade_results"):
+    # 1. 勝ち負けでフォルダを分ける
+    sub_folder = "win" if trade_info['profit'] >= 0 else "loss"
+    target_dir = os.path.join(folder_base, sub_folder)
+    if not os.path.exists(target_dir): 
+        os.makedirs(target_dir)
+    
+    # 2. 描画範囲の決定 (エントリーから決済までが見えるように)
+    entry_idx = df.index.get_indexer([trade_info['time']], method='pad')[0]
+    exit_idx = df.index.get_indexer([trade_info['exit_time']], method='pad')[0]
+    
+    start_idx = max(0, entry_idx - 30) # エントリーの30本前から
+    end_idx = min(len(df) - 1, exit_idx + 30) # 決済の30本後まで
+    subset = df.iloc[start_idx:end_idx]
+    
+    # 3. エントリーと決済を画像内にマークする (追加描画の設定)
+    # エントリー点と決済点に印をつけるためのリスト
+    apds = [
+        # エントリー地点に青(Buy)または赤(Sell)の矢印
+        mpf.make_addplot([trade_info['price'] if i == entry_idx else np.nan for i in range(start_idx, end_idx)],
+                         type='scatter', markersize=200, marker='^' if trade_info['side']=='BUY' else 'v',
+                         color='blue' if trade_info['side']=='BUY' else 'red'),
+        # 決済地点に黒の×印
+        mpf.make_addplot([trade_info['exit_p'] if i == exit_idx else np.nan for i in range(start_idx, end_idx)],
+                         type='scatter', markersize=200, marker='x', color='black')
+    ]
+
+    # 4. ファイル名とタイトル (時間足を入れる)
+    time_str = trade_info['exit_time'].strftime("%Y%m%d_%H%M%S")
+    filename = f"{target_dir}/{time_str}_{current_view}_{trade_info['pips']}pips.png"
+    chart_title = f"Result: {trade_info['pips']} pips ({trade_info['side']} on {current_view})"
+    
+    # 5. 描画
+    mpf.plot(subset, type='candle', style='yahoo', 
+             addplot=apds,
+             title=chart_title,
+             savefig=filename, 
+             warn_too_much_data=1000)
+    
+    print(f"画像保存完了 [{sub_folder}]: {filename}")
     if not os.path.exists(folder): os.makedirs(folder)
     
     # トレードの前後を表示範囲にする

@@ -76,7 +76,8 @@ class StartupSettings:
 # 5. イベント処理
 # =========================
 def on_key_press(e):
-    global idx_base, is_autoplay, current_view, fibo_mode, fibo_points, selected_obj, trade, balance, history, markers    pressed.add(e.key)
+    global idx_base, is_autoplay, current_view, fibo_mode, fibo_points, selected_obj, trade, balance, history, markers    
+    pressed.add(e.key)
     step = 10 if "control" in pressed else 1
     # --- 1. 移動量の計算 ---
     tf_steps = {"M1": 1, "M5": 5, "M15": 15, "H1": 60, "D1": 1440, "MN": 43200}
@@ -132,7 +133,7 @@ def on_key_press(e):
                         if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
                             # ★ ここに画像保存を追加！ ★
                             if history[-1]['profit'] < 0:
-                                visualizer.save_trade_screenshot(df_base, history[-1])
+                                visualizer.save_trade_screenshot(df_base, history[-1], current_view)
                             break
                     visualizer.redraw(
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
@@ -251,7 +252,7 @@ def on_button_press(e):
             history.append({**trade, "exit_p": curr_p, "exit_time": curr_t, "pips": pips, "profit": profit})
             # ★ ここに画像保存を追加！ ★
             if profit < 0: # 負けトレードなら
-                visualizer.save_trade_screenshot(df_base, history[-1])
+                visualizer.save_trade_screenshot(df_base, history[-1], current_view)
             balance += profit; markers.append((curr_t, curr_p, "x", "black", 0.3)); trade = None; stop_lines_data.clear()
         elif "h" in pressed: hlines_data.append([e.ydata, "blue", "-"])
         elif "shift" in pressed: stop_lines_data.clear(); stop_lines_data.append([e.ydata, "red", "--"])
@@ -275,7 +276,7 @@ def execute_skip():
         if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
             # ★ ここに画像保存を追加！ ★
             if history[-1]['profit'] < 0:
-                visualizer.save_trade_screenshot(df_base, history[-1])
+                visualizer.save_trade_screenshot(df_base, history[-1], current_view)
             break
         curr = df_base.iloc[idx_base]
         if any(curr["Low"] <= p <= curr["High"] for p, c, ls in hlines_data): break
