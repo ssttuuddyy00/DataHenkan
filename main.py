@@ -5,6 +5,8 @@ import config        # config.py を読み込む
 import data_manager  # data_manager.py を読み込む
 import engine        # engine.py を読み込む
 import visualizer    # visualizer.py を読み込む
+import pandas as pd # StartupSettings内でpd.Timestampを使うため必要
+
 
 # =========================
 # 2. 起動時設定ダイアログ
@@ -255,13 +257,54 @@ def execute_skip():
     
 
 def on_close(event):
-    if history and messagebox.askyesno("保存", "CSVに記録しますか？"): save_csv_files()
+    if history and messagebox.askyesno("保存", "CSVに記録しますか？"): visualizer.save_csv_files(history, balance)
     plt.close()
 
 
 # =========================
 # 7. 実行
 # =========================
+# --- ここから追加 ---
+# 1. configから設定を読み込む
+PATHS = config.PATHS
+WINDOW_SIZES = config.WINDOW_SIZES
+VIEW_MAP = config.VIEW_MAP
+
+# 2. data_managerを使ってデータをロードする
+DFS = {}
+for tf, path in PATHS.items():
+    DFS[tf] = data_manager.load_csv(path)
+
+df_base = DFS["M1"]
+
+# 3. 初期状態の変数（これがないと黄色い線が出る）
+balance = config.INITIAL_BALANCE
+RISK_PER_TRADE = config.RISK_PER_TRADE
+idx_base = 0
+trade = None
+hlines_data, stop_lines_data = [], []
+markers, history = [], []
+pressed = set()
+selected_obj, dragging = None, False
+fibo_mode, fibo_points = None, []
+retracements, extensions = [], []
+is_autoplay = False
+autoplay_speed = 0.5
+# ------------------
+
+# 価格単位の判定（これもdata_managerに移してもいいですが、一旦ここに）
+PIPS_UNIT, ONE_LOT_PIPS_VALUE = (0.01, 1000) if df_base['Close'].iloc[0] > 50 else (0.0001, 1500)
+
+# 表示位置の決定とダイアログ
+start_margin = WINDOW_SIZES["M1"] + 50
+st = StartupSettings(df_base.index[start_margin])
+if not st.confirmed: exit()
+
+lot_mode = st.lot_mode
+fixed_lot_size = st.fixed_lot
+idx_base = df_base.index.get_indexer([st.dt_result], method='pad')[0]
+idx_base = max(start_margin, idx_base)
+current_view = "H1"
 # 表示中の時間足を管理する変数（初期値はH1）
 current_view = "H1" 
 
