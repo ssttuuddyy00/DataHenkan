@@ -21,8 +21,7 @@ extensions = []   # list of dicts {p1, p2, p3}
 # ドラッグ中の軸固定用変数
 fixed_ylim = None
 
-def check_stop_loss():
-    global trade, balance, stop_lines_data, markers
+def check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers):
     if not trade or not stop_lines_data: return False
     curr = df_base.iloc[idx_base]
     sl_p = stop_lines_data[0][0]

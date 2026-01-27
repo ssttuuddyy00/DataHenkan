@@ -76,8 +76,7 @@ class StartupSettings:
 # 5. イベント処理
 # =========================
 def on_key_press(e):
-    global idx_base, is_autoplay, current_view, fibo_mode, fibo_points    
-    pressed.add(e.key)
+    global idx_base, is_autoplay, current_view, fibo_mode, fibo_points, selected_obj, trade, balance, history, markers    pressed.add(e.key)
     step = 10 if "control" in pressed else 1
     # --- 1. 移動量の計算 ---
     tf_steps = {"M1": 1, "M5": 5, "M15": 15, "H1": 60, "D1": 1440, "MN": 43200}
