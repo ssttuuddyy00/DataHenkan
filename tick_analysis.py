@@ -54,4 +54,4 @@ def analyze_tick_data_fast(file_path, tick_window=1000):
     agg_df['StartTime'] = grouped['Timestamp'].first()
 
     return agg_df
-res = analyze_tick_data(r"C:\Users\81803\OneDrive\ドキュメント\EURUSD_tick_2004_2025.csv")
+file_path = r"C:\Users\81803\OneDrive\ドキュメント\EURUSD_tick_2004_2025.csv"
