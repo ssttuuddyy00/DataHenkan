@@ -11,51 +11,29 @@ import numpy as np
 
 def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj):
     try:
-        # 1. 現在の基準時刻と価格
+        # 1. 基準となる現在時刻
         current_time = df_base.index[idx_base]
-        v_price = df_base.iloc[idx_base]["Close"]
         
+        # 2. その時間足のデータを取得
         full_df = dfs[current_view]
-        # 現在時刻以下のデータを取得
+        
+        # 3. 現在時刻「以下」のデータを抽出
+        # ※ ここで .copy() した後に Close を v_price で上書きしていた処理を完全に削除しました。
         plot_df = full_df[full_df.index <= current_time].copy()
         
-        if not plot_df.empty:
-             # --- 修正：足が確定した瞬間の「化け」を防ぐロジック ---
-            last_idx = plot_df.index[-1]
-            
-            # 現在表示中の時間足が、1本あたり「何分間」あるかを定義
-            tf_delta_map = {
-                "M1": pd.Timedelta(minutes=1),
-                "M5": pd.Timedelta(minutes=5),
-                "M15": pd.Timedelta(minutes=15),
-                "H1": pd.Timedelta(hours=1),
-                "D1": pd.Timedelta(days=1),
-                "MN": pd.Timedelta(days=31) # 1ヶ月は近似
-            }
-            tf_delta = tf_delta_map.get(current_view, pd.Timedelta(minutes=1))
-            
-             # 【重要】現在時刻が「最新の足の開始時刻 + 足の長さ」より前である場合のみ補完を実行
-            # つまり「まだその足が形成されている途中」の時だけ上書きする
-            if current_time < last_idx + tf_delta:
-                plot_df.at[last_idx, "Close"] = v_price
-                # High/Lowは「CSVの元の値」と「今の1分足の価格」を比較して高い/低い方を採用
-                if v_price > plot_df.at[last_idx, "High"]: plot_df.at[last_idx, "High"] = v_price
-                if v_price < plot_df.at[last_idx, "Low"]: plot_df.at[last_idx, "Low"] = v_price
-            # ---------------------------------------------------
-        
-        # 2. 表示範囲の切り出し
+        # 4. 表示範囲の切り出し
         plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
 
-        ax_main.clear() 
+        # 5. 描画（CSVにある Open, High, Low, Close をそのまま使用）
+        ax_main.clear()
         ax_info.clear()
         ax_info.axis("off")
 
         if not plot_df.empty:
-            mpf.plot(plot_df, ax=ax_main, type="candle", style="yahoo")
-            # 軸範囲を固定（これがないと移動時にガタつきます）
+            # mpf.plot は与えられた DataFrame の値をそのまま描画します
+            mpf.plot(plot_df, ax=ax_main, type='candle', style='yahoo')
             ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
-            ax_main.set_title(f"VIEW: {current_view} | {current_time}", fontsize=10, loc='left')
-
+            ax_main.set_title(f"VIEW: {current_view} | {current_time.strftime('%Y-%m-%d %H:%M')}", loc='left', fontsize=10)
         # --- 以下、描画処理 (変更なし) ---
         # 3. フィボナッチ描画
         for f in retracements:
