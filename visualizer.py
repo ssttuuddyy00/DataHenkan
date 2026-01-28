@@ -11,18 +11,37 @@ import numpy as np
 
 def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj):
     try:
-        # 1. データの取得
+        # 1. 現在の基準時刻と価格
         current_time = df_base.index[idx_base]
         v_price = df_base.iloc[idx_base]["Close"]
         
-        full_df = dfs[current_view] # 小文字に修正
+        full_df = dfs[current_view]
+        # 現在時刻以下のデータを取得
         plot_df = full_df[full_df.index <= current_time].copy()
         
         if not plot_df.empty:
+            # --- 修正：足が確定した瞬間の「化け」を防ぐロジック ---
             last_idx = plot_df.index[-1]
-            plot_df.at[last_idx, "Close"] = v_price
-            if v_price > plot_df.at[last_idx, "High"]: plot_df.at[last_idx, "High"] = v_price
-            if v_price < plot_df.at[last_idx, "Low"]: plot_df.at[last_idx, "Low"] = v_price
+            
+            # 現在表示中の時間足が、1本あたり「何分間」あるかを定義
+            tf_delta_map = {
+                "M1": pd.Timedelta(minutes=1),
+                "M5": pd.Timedelta(minutes=5),
+                "M15": pd.Timedelta(minutes=15),
+                "H1": pd.Timedelta(hours=1),
+                "D1": pd.Timedelta(days=1),
+                "MN": pd.Timedelta(days=31) # 1ヶ月は近似
+            }
+            tf_delta = tf_delta_map.get(current_view, pd.Timedelta(minutes=1))
+
+            # 【重要】現在時刻が「最新の足の開始時刻 + 足の長さ」より前である場合のみ補完を実行
+            # つまり「まだその足が形成されている途中」の時だけ上書きする
+            if current_time < last_idx + tf_delta:
+                plot_df.at[last_idx, "Close"] = v_price
+                # High/Lowは「CSVの元の値」と「今の1分足の価格」を比較して高い/低い方を採用
+                if v_price > plot_df.at[last_idx, "High"]: plot_df.at[last_idx, "High"] = v_price
+                if v_price < plot_df.at[last_idx, "Low"]: plot_df.at[last_idx, "Low"] = v_price
+            # ---------------------------------------------------
 
         # 2. 表示範囲の切り出し
         plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
@@ -33,9 +52,11 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
 
         if not plot_df.empty:
             mpf.plot(plot_df, ax=ax_main, type="candle", style="yahoo")
+            # 軸範囲を固定（これがないと移動時にガタつきます）
             ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
             ax_main.set_title(f"VIEW: {current_view} | {current_time}", fontsize=10, loc='left')
 
+        # --- 以下、描画処理 (変更なし) ---
         # 3. フィボナッチ描画
         for f in retracements:
             p1, p2 = f['p1'], f['p2']
@@ -55,7 +76,7 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
             if mt in plot_times:
                 ax_main.scatter(plot_times.index(mt), mp, marker=ms, color=mc, s=100, alpha=ma, zorder=1)
 
-        # 6. 情報パネル
+        # 6. 情報パネルの描画
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
         current_lot = max(0.01, round(RISK_PER_TRADE / (max(0.1, abs(v_price - sl_p))/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode=="AUTO" and sl_p else fixed_lot_size
         total_pips = round(sum(h['pips'] for h in history), 1)
@@ -72,7 +93,6 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
         
         fig.canvas.draw_idle()
     except Exception as e: print(f"描画エラー: {e}")
-
 
 def save_trade_screenshot(df, trade_info, current_view, folder_base=r"C:\Users\81803\OneDrive\画像\リプレイ画像"):
     # 1. 勝ち負けでフォルダを分ける
