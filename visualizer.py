@@ -74,7 +74,7 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
     except Exception as e: print(f"描画エラー: {e}")
 
 
-def save_trade_screenshot(df, trade_info, current_view, folder_base="trade_results"):
+def save_trade_screenshot(df, trade_info, current_view, folder_base=r"C:\Users\81803\OneDrive\画像\リプレイ画像"):
     # 1. 勝ち負けでフォルダを分ける
     sub_folder = "win" if trade_info['profit'] >= 0 else "loss"
     target_dir = os.path.join(folder_base, sub_folder)

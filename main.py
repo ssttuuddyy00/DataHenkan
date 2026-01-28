@@ -133,7 +133,12 @@ def on_key_press(e):
                         if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
                             # ★ ここに画像保存を追加！ ★
                             if history[-1]['profit'] < 0:
-                                visualizer.save_trade_screenshot(df_base, history[-1], current_view)
+                                visualizer.save_trade_screenshot(
+    df_base, 
+    history[-1], 
+    current_view, 
+    folder_base=config.RESULT_SAVE_DIR  # configから渡す
+)
                             break
                     visualizer.redraw(
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
@@ -252,7 +257,12 @@ def on_button_press(e):
             history.append({**trade, "exit_p": curr_p, "exit_time": curr_t, "pips": pips, "profit": profit})
             # ★ ここに画像保存を追加！ ★
             if profit < 0: # 負けトレードなら
-                visualizer.save_trade_screenshot(df_base, history[-1], current_view)
+                visualizer.save_trade_screenshot(
+    df_base, 
+    history[-1], 
+    current_view, 
+    folder_base=config.RESULT_SAVE_DIR  # configから渡す
+)
             balance += profit; markers.append((curr_t, curr_p, "x", "black", 0.3)); trade = None; stop_lines_data.clear()
         elif "h" in pressed: hlines_data.append([e.ydata, "blue", "-"])
         elif "shift" in pressed: stop_lines_data.clear(); stop_lines_data.append([e.ydata, "red", "--"])
@@ -276,7 +286,12 @@ def execute_skip():
         if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
             # ★ ここに画像保存を追加！ ★
             if history[-1]['profit'] < 0:
-                visualizer.save_trade_screenshot(df_base, history[-1], current_view)
+                visualizer.save_trade_screenshot(
+    df_base, 
+    history[-1], 
+    current_view, 
+    folder_base=config.RESULT_SAVE_DIR  # configから渡す
+)
             break
         curr = df_base.iloc[idx_base]
         if any(curr["Low"] <= p <= curr["High"] for p, c, ls in hlines_data): break
@@ -292,7 +307,7 @@ def execute_skip():
 def on_close(event):
     if history and messagebox.askyesno("保存", "CSVに記録しますか？"): 
         visualizer.save_csv_files(history, balance)
-        visualizer.generate_report() # ← これを追加！
+        visualizer.generate_report(folder_base=config.RESULT_SAVE_DIR) # ← これを追加！
     plt.close()
 
 
@@ -379,4 +394,6 @@ visualizer.redraw(
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj
 )
+
+
 plt.show()
