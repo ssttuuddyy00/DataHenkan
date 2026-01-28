@@ -20,14 +20,13 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
         plot_df = full_df[full_df.index <= current_time].copy()
         
         if not plot_df.empty:
-            # 1. 現在の表示足のスパンを取得
+             # 1. 現在の表示足のスパンを取得
             tf_spans = {
                 "M1": pd.Timedelta(minutes=1), "M5": pd.Timedelta(minutes=5),
                 "M15": pd.Timedelta(minutes=15), "H1": pd.Timedelta(hours=1),
                 "D1": pd.Timedelta(days=1)
             }
             span = tf_spans.get(current_view, pd.Timedelta(minutes=1))
-
             # 2. すべての確定済みの足に対して「次の足の始値」を「自分の終値」にする補完
             # これにより、17:59までのM1データではなく、18:00の始値を終値として採用できる
             for i in range(len(plot_df) - 1):
