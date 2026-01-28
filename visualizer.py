@@ -20,29 +20,32 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
         plot_df = full_df[full_df.index <= current_time].copy()
         
         if not plot_df.empty:
-            # --- 修正：足が確定した瞬間の「化け」を防ぐロジック ---
-            last_idx = plot_df.index[-1]
-            
-            # 現在表示中の時間足が、1本あたり「何分間」あるかを定義
-            tf_delta_map = {
-                "M1": pd.Timedelta(minutes=1),
-                "M5": pd.Timedelta(minutes=5),
-                "M15": pd.Timedelta(minutes=15),
-                "H1": pd.Timedelta(hours=1),
-                "D1": pd.Timedelta(days=1),
-                "MN": pd.Timedelta(days=31) # 1ヶ月は近似
+            # 1. 現在の表示足のスパンを取得
+            tf_spans = {
+                "M1": pd.Timedelta(minutes=1), "M5": pd.Timedelta(minutes=5),
+                "M15": pd.Timedelta(minutes=15), "H1": pd.Timedelta(hours=1),
+                "D1": pd.Timedelta(days=1)
             }
-            tf_delta = tf_delta_map.get(current_view, pd.Timedelta(minutes=1))
+            span = tf_spans.get(current_view, pd.Timedelta(minutes=1))
 
-            # 【重要】現在時刻が「最新の足の開始時刻 + 足の長さ」より前である場合のみ補完を実行
-            # つまり「まだその足が形成されている途中」の時だけ上書きする
-            if current_time < last_idx + tf_delta:
-                plot_df.at[last_idx, "Close"] = v_price
-                # High/Lowは「CSVの元の値」と「今の1分足の価格」を比較して高い/低い方を採用
-                if v_price > plot_df.at[last_idx, "High"]: plot_df.at[last_idx, "High"] = v_price
-                if v_price < plot_df.at[last_idx, "Low"]: plot_df.at[last_idx, "Low"] = v_price
-            # ---------------------------------------------------
+            # 2. すべての確定済みの足に対して「次の足の始値」を「自分の終値」にする補完
+            # これにより、17:59までのM1データではなく、18:00の始値を終値として採用できる
+            for i in range(len(plot_df) - 1):
+                current_idx = plot_df.index[i]
+                next_idx = plot_df.index[i+1]
+                # 次の足の始値を、現在の足の終値にコピー（隙間を埋める）
+                plot_df.at[current_idx, "Close"] = plot_df.at[next_idx, "Open"]
+                # High/Lowも念のため補正
+                plot_df.at[current_idx, "High"] = max(plot_df.at[current_idx, "High"], plot_df.at[current_idx, "Close"])
+                plot_df.at[current_idx, "Low"] = min(plot_df.at[current_idx, "Low"], plot_df.at[current_idx, "Close"])
 
+            # 3. 「一番右端（最新）」の足だけは、今まで通り現在のM1価格(v_price)で更新
+            last_t = plot_df.index[-1]
+            if current_time < last_t + span:
+                plot_df.at[last_t, "Close"] = v_price
+                plot_df.at[last_t, "High"] = max(plot_df.at[last_t, "High"], v_price)
+                plot_df.at[last_t, "Low"] = min(plot_df.at[last_t, "Low"], v_price)
+        
         # 2. 表示範囲の切り出し
         plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
 
