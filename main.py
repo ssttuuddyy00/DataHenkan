@@ -165,18 +165,49 @@ def on_key_press(e):
         selected_obj = None
   
     # 1〜6の数字キー判定を確実に
+   # 1〜6の数字キー判定
     if e.key in ["1", "2", "3", "4", "5", "6"]:
-        current_view = VIEW_MAP[e.key]
-        print(f">> 表示切り替え: {current_view}")
-        visualizer.redraw(
-    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, balance, 
-    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
-) # 即座に再描画
+        # 新しい表示時間足を取得
+        new_view = VIEW_MAP[e.key]
         
-  
+        # --- 追加：時間補正（スナップ）ロジック ---
+        # 現在の1分足の時刻を取得
+        current_dt = df_base.index[idx_base]
+        
+        # 切り替え先の足に合わせた「切り捨て（floor）」単位を定義
+        freq_map = {
+            "M5": "5min", 
+            "M15": "15min", 
+            "H1": "1H", 
+            "D1": "1D", 
+            "MN": "MS"
+        }
+        
+        if new_view in freq_map:
+            # 例: 14:53 を M5切り替え時に 14:50、H1切り替え時に 14:00 へ戻す
+            snapped_dt = current_dt.floor(freq_map[new_view])
+            
+            # M1データ(df_base)の中で、その時刻のインデックスを探す
+            new_idx = df_base.index.get_indexer([snapped_dt], method='pad')[0]
+            
+            if new_idx != -1:
+                idx_base = max(WINDOW_SIZES["M1"], new_idx)
+                print(f">> 時間補正: {current_dt} -> {snapped_dt} ({new_view}の起点)")
+        
+        # 時間足を更新
+        current_view = new_view
+        print(f">> 表示切り替え: {current_view}")
+        
+        # 再描画
+        visualizer.redraw(
+            ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+            hlines_data, stop_lines_data, markers, history, balance, 
+            is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+            retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+            fibo_mode, fibo_points, selected_obj
+        )
+        return # 以降の重複redrawを避ける
+
     visualizer.redraw(
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
