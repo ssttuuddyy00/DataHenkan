@@ -167,37 +167,35 @@ def on_key_press(e):
     # 1〜6の数字キー判定を確実に
    # 1〜6の数字キー判定
     if e.key in ["1", "2", "3", "4", "5", "6"]:
-        # 新しい表示時間足を取得
         new_view = VIEW_MAP[e.key]
         
-        # --- 追加：時間補正（スナップ）ロジック ---
-        # 現在の1分足の時刻を取得
+        # --- スナップロジックの修正 ---
         current_dt = df_base.index[idx_base]
         
-        # 切り替え先の足に合わせた「切り捨て（floor）」単位を定義
+        # 各時間足に対応する丸め単位を定義（MNは月初 "MS" に合わせる）
         freq_map = {
+            "M1": "1min",
             "M5": "5min", 
             "M15": "15min", 
             "H1": "1H", 
             "D1": "1D", 
-            "MN": "MS"
+            "MN": "MS"  # Month Start (月初)
         }
         
         if new_view in freq_map:
-            # 例: 14:53 を M5切り替え時に 14:50、H1切り替え時に 14:00 へ戻す
-            snapped_dt = current_dt.floor(freq_map[new_view])
+            # 現在の時刻を切り替え先の時間足の起点に丸める
+            # 例: 1月20日 15:30 -> MN切り替え時に 1月1日 00:00
+            snapped_dt = current_dt.floor(freq_map[new_view]) if new_view != "MN" else current_dt.replace(day=1, hour=0, minute=0)
             
-            # M1データ(df_base)の中で、その時刻のインデックスを探す
+            # 丸めた時刻のインデックスをM1データから探し直す
             new_idx = df_base.index.get_indexer([snapped_dt], method='pad')[0]
             
             if new_idx != -1:
                 idx_base = max(WINDOW_SIZES["M1"], new_idx)
-                print(f">> 時間補正: {current_dt} -> {snapped_dt} ({new_view}の起点)")
+                print(f">> 時間補正: {current_dt} -> {snapped_dt} ({new_view})")
         
-        # 時間足を更新
         current_view = new_view
         print(f">> 表示切り替え: {current_view}")
-        
         # 再描画
         visualizer.redraw(
             ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
