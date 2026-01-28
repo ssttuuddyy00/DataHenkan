@@ -85,28 +85,52 @@ def on_key_press(e):
     move_amount = base_step * (10 if "control" in pressed else 1)
 
     # --- 2. 実際の移動（ここを1つのブロックにまとめる） ---
+    # --- 1. 移動量の計算と実行 ---
+   # --- 1. 移動ロジック：データの並び順（整数位置）で直接指定 ---
+    full_df = DFS[current_view]
+    current_dt = df_base.index[idx_base]
+
+    # 現在の時刻以前で、最も近い上位足の「行番号」を取得
+    # searchsorted は非常に高速で、確実に「何番目の行か」を返します
+    current_row_idx = full_df.index.searchsorted(current_dt, side='right') - 1
+
     if e.key == "right":
-        if idx_base + move_amount < len(df_base):
-            idx_base += move_amount  # ここで指定分だけ進める
-            engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers)
-            visualizer.redraw(
-    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, balance, 
-    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
-)
-            return # 処理を終了して、下の「+1」を通さないようにする
+        step = 10 if "control" in pressed else 1
+        # 次の行の番号
+        target_row_idx = current_row_idx + step
+        
+        # データの範囲内かチェック
+        if target_row_idx < len(full_df):
+            next_time = full_df.index[target_row_idx]
             
+            # M1データのインデックスを更新（ここも確実に get_loc か searchsorted で）
+            new_idx = df_base.index.searchsorted(next_time)
+            
+            if new_idx < len(df_base):
+                idx_base = new_idx
+                engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers)
+                # 再描画
+                visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                                hlines_data, stop_lines_data, markers, history, balance, 
+                                is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                                retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                                fibo_mode, fibo_points, selected_obj)
+        return
+
     elif e.key == "left":
-        idx_base = max(WINDOW_SIZES["M1"], idx_base - move_amount)
-        visualizer.redraw(
-    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, balance, 
-    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
-)
+        step = 10 if "control" in pressed else 1
+        target_row_idx = max(0, current_row_idx - step)
+        
+        prev_time = full_df.index[target_row_idx]
+        new_idx = df_base.index.searchsorted(prev_time)
+        
+        if new_idx < len(df_base):
+            idx_base = max(WINDOW_SIZES["M1"], new_idx)
+            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                            hlines_data, stop_lines_data, markers, history, balance, 
+                            is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                            retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                            fibo_mode, fibo_points, selected_obj)
         return
     if e.key == "a": is_autoplay = not is_autoplay
     # 時間足切り替え（追加）
