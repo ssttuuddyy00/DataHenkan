@@ -85,28 +85,47 @@ def on_key_press(e):
     move_amount = base_step * (10 if "control" in pressed else 1)
 
     # --- 2. 実際の移動（ここを1つのブロックにまとめる） ---
+   # --- 1. 移動ロジックの統一 ---
+    full_df = DFS[current_view]
+    current_dt = df_base.index[idx_base]
+
     if e.key == "right":
-        if idx_base + move_amount < len(df_base):
-            idx_base += move_amount  # ここで指定分だけ進める
-            engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers)
-            visualizer.redraw(
-    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, balance, 
-    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
-)
-            return # 処理を終了して、下の「+1」を通さないようにする
+        # 現在時刻より「後」のデータ行から、一番近いもの（次の1本）を取得
+        future_data = full_df[full_df.index > current_dt]
+        if not future_data.empty:
+            # Controlキーが押されていれば10本先、そうでなければ1本先
+            target_idx = min(len(future_data) - 1, 9 if "control" in pressed else 0)
+            next_time = future_data.index[target_idx]
             
+            # idx_base（M1基準）をその時刻に更新
+            new_idx = df_base.index.get_indexer([next_time], method='pad')[0]
+            if new_idx != -1:
+                idx_base = new_idx
+                # 移動後の判定と描画
+                engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers)
+                visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                                hlines_data, stop_lines_data, markers, history, balance, 
+                                is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                                retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                                fibo_mode, fibo_points, selected_obj)
+        return
+
     elif e.key == "left":
-        idx_base = max(WINDOW_SIZES["M1"], idx_base - move_amount)
-        visualizer.redraw(
-    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, balance, 
-    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
-)
+        # 現在時刻より「前」のデータ行から、一番近いもの（前の1本）を取得
+        past_data = full_df[full_df.index < current_dt]
+        if not past_data.empty:
+            # Controlキーが押されていれば10本前、そうでなければ1本前
+            target_idx = max(0, len(past_data) - (10 if "control" in pressed else 1))
+            prev_time = past_data.index[target_idx]
+            
+            new_idx = df_base.index.get_indexer([prev_time], method='pad')[0]
+            if new_idx != -1:
+                idx_base = max(WINDOW_SIZES["M1"], new_idx)
+                visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                                hlines_data, stop_lines_data, markers, history, balance, 
+                                is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                                retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                                fibo_mode, fibo_points, selected_obj)
         return
     if e.key == "a": is_autoplay = not is_autoplay
     # 時間足切り替え（追加）
