@@ -11,54 +11,29 @@ import numpy as np
 
 def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj):
     try:
-        # 1. 現在の基準時刻と価格
+        # 1. 基準となる現在時刻
         current_time = df_base.index[idx_base]
-        v_price = df_base.iloc[idx_base]["Close"]
         
+        # 2. その時間足のデータを取得
         full_df = dfs[current_view]
-        # 現在時刻以下のデータを取得
+        
+        # 3. 現在時刻「以下」のデータを抽出
+        # ※ ここで .copy() した後に Close を v_price で上書きしていた処理を完全に削除しました。
         plot_df = full_df[full_df.index <= current_time].copy()
         
-        if not plot_df.empty:
-            # 1. 現在の表示足のスパンを取得
-            tf_spans = {
-                "M1": pd.Timedelta(minutes=1), "M5": pd.Timedelta(minutes=5),
-                "M15": pd.Timedelta(minutes=15), "H1": pd.Timedelta(hours=1),
-                "D1": pd.Timedelta(days=1)
-            }
-            span = tf_spans.get(current_view, pd.Timedelta(minutes=1))
-
-            # 2. すべての確定済みの足に対して「次の足の始値」を「自分の終値」にする補完
-            # これにより、17:59までのM1データではなく、18:00の始値を終値として採用できる
-            for i in range(len(plot_df) - 1):
-                current_idx = plot_df.index[i]
-                next_idx = plot_df.index[i+1]
-                # 次の足の始値を、現在の足の終値にコピー（隙間を埋める）
-                plot_df.at[current_idx, "Close"] = plot_df.at[next_idx, "Open"]
-                # High/Lowも念のため補正
-                plot_df.at[current_idx, "High"] = max(plot_df.at[current_idx, "High"], plot_df.at[current_idx, "Close"])
-                plot_df.at[current_idx, "Low"] = min(plot_df.at[current_idx, "Low"], plot_df.at[current_idx, "Close"])
-
-            # 3. 「一番右端（最新）」の足だけは、今まで通り現在のM1価格(v_price)で更新
-            last_t = plot_df.index[-1]
-            if current_time < last_t + span:
-                plot_df.at[last_t, "Close"] = v_price
-                plot_df.at[last_t, "High"] = max(plot_df.at[last_t, "High"], v_price)
-                plot_df.at[last_t, "Low"] = min(plot_df.at[last_t, "Low"], v_price)
-        
-        # 2. 表示範囲の切り出し
+        # 4. 表示範囲の切り出し
         plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
 
-        ax_main.clear() 
+        # 5. 描画（CSVにある Open, High, Low, Close をそのまま使用）
+        ax_main.clear()
         ax_info.clear()
         ax_info.axis("off")
 
         if not plot_df.empty:
-            mpf.plot(plot_df, ax=ax_main, type="candle", style="yahoo")
-            # 軸範囲を固定（これがないと移動時にガタつきます）
+            # mpf.plot は与えられた DataFrame の値をそのまま描画します
+            mpf.plot(plot_df, ax=ax_main, type='candle', style='yahoo')
             ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
-            ax_main.set_title(f"VIEW: {current_view} | {current_time}", fontsize=10, loc='left')
-
+            ax_main.set_title(f"VIEW: {current_view} | {current_time.strftime('%Y-%m-%d %H:%M')}", loc='left', fontsize=10)
         # --- 以下、描画処理 (変更なし) ---
         # 3. フィボナッチ描画
         for f in retracements:
