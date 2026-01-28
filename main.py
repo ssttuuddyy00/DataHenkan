@@ -11,6 +11,10 @@ import pandas as pd # StartupSettings内でpd.Timestampを使うため必要
 # =========================
 # 2. 起動時設定ダイアログ
 # =========================
+# --- main.py ---
+# 追加
+formation_mode = True  # True: 1分足で形成、False: その時間足単位でジャンプ
+
 class StartupSettings:
     def __init__(self, initial_dt):
         self.root = tk.Tk()
@@ -76,7 +80,7 @@ class StartupSettings:
 # 5. イベント処理
 # =========================
 def on_key_press(e):
-    global idx_base, is_autoplay, current_view, fibo_mode, fibo_points, selected_obj, trade, balance, history, markers    
+    global idx_base, is_autoplay, current_view, fibo_mode, fibo_points, selected_obj, trade, balance, history, markers , formation_mode 
     pressed.add(e.key)
     step = 10 if "control" in pressed else 1
     # --- 1. 移動量の計算 ---
@@ -94,44 +98,56 @@ def on_key_press(e):
     # searchsorted は非常に高速で、確実に「何番目の行か」を返します
     current_row_idx = full_df.index.searchsorted(current_dt, side='right') - 1
 
+    # --- main.py / on_key_press 内 ---
+    # --- 右移動 (進む) ---
     if e.key == "right":
-        step = 10 if "control" in pressed else 1
-        # 次の行の番号
-        target_row_idx = current_row_idx + step
-        
-        # データの範囲内かチェック
-        if target_row_idx < len(full_df):
-            next_time = full_df.index[target_row_idx]
-            
-            # M1データのインデックスを更新（ここも確実に get_loc か searchsorted で）
-            new_idx = df_base.index.searchsorted(next_time)
-            
-            if new_idx < len(df_base):
-                idx_base = new_idx
-                engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers)
-                # 再描画
-                visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-                                hlines_data, stop_lines_data, markers, history, balance, 
-                                is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                                retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-                                fibo_mode, fibo_points, selected_obj)
+        if formation_mode:
+            # 形成モード: 1分足のインデックスを1つ進める
+            step = 1 if not "control" in pressed else 10
+            idx_base = min(len(df_base) - 1, idx_base + step)
+        else:
+            # ジャンプモード: 現在の表示足の「次の行」へジャンプ
+            current_row_idx = full_df.index.searchsorted(current_dt, side='right')
+            target_row_idx = min(len(full_df) - 1, current_row_idx + (9 if "control" in pressed else 0))
+            idx_base = df_base.index.searchsorted(full_df.index[target_row_idx])
+
+        # 損切りチェックと再描画
+        engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers)
+        visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                         hlines_data, stop_lines_data, markers, history, balance, 
+                         is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                         retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                         fibo_mode, fibo_points, selected_obj, formation_mode)
         return
 
+    # --- 左移動 (戻る) ---
     elif e.key == "left":
-        step = 10 if "control" in pressed else 1
-        target_row_idx = max(0, current_row_idx - step)
-        
-        prev_time = full_df.index[target_row_idx]
-        new_idx = df_base.index.searchsorted(prev_time)
-        
-        if new_idx < len(df_base):
-            idx_base = max(WINDOW_SIZES["M1"], new_idx)
-            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-                            hlines_data, stop_lines_data, markers, history, balance, 
-                            is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                            retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-                            fibo_mode, fibo_points, selected_obj)
+        if formation_mode:
+            # 形成モード: 1分足のインデックスを1つ戻す
+            step = 1 if not "control" in pressed else 10
+            idx_base = max(WINDOW_SIZES["M1"], idx_base - step)
+        else:
+            # ジャンプモード: 現在の表示足の「前の行」へジャンプ
+            # 現在時刻より「前」の開始時刻を持つ行を探す
+            current_row_idx = full_df.index.searchsorted(current_dt, side='left') - 1
+            target_row_idx = max(0, current_row_idx - (9 if "control" in pressed else 0))
+            idx_base = df_base.index.searchsorted(full_df.index[target_row_idx])
+
+        visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                         hlines_data, stop_lines_data, markers, history, balance, 
+                         is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                         retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                         fibo_mode, fibo_points, selected_obj, formation_mode)
         return
+ 
+
+    # モード切り替えキー（例：'m'キー）
+    elif e.key == "m":
+        formation_mode = not formation_mode
+        mode_text = "形成表示モード" if formation_mode else "確定ジャンプモード"
+        print(f">> モード変更: {mode_text}")
+
+    
     if e.key == "a": is_autoplay = not is_autoplay
     # 時間足切り替え（追加）
    
@@ -169,7 +185,8 @@ def on_key_press(e):
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
+    fibo_mode, fibo_points, selected_obj,
+    formation_mode # ← これを追加
 )
                 elif new_idx <= idx_base:
                     idx_base = max(WINDOW_SIZES["M1"], new_idx)
@@ -178,7 +195,8 @@ def on_key_press(e):
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
+    fibo_mode, fibo_points, selected_obj,
+    formation_mode # ← これを追加
 )
             except Exception as ex: print(f"Jump Error: {ex}")
     
@@ -190,53 +208,44 @@ def on_key_press(e):
   
     # 1〜6の数字キー判定を確実に
    # 1〜6の数字キー判定
+    # --- 修正箇所：数字キー判定の中 ---
+    # 1〜6の数字キー判定
     if e.key in ["1", "2", "3", "4", "5", "6"]:
+        # 1. ここで new_view を定義（これが漏れると NameError）
         new_view = VIEW_MAP[e.key]
         
-        # --- スナップロジックの修正 ---
+        # 2. スナップロジック（現在時刻をその時間足の起点に合わせる）
         current_dt = df_base.index[idx_base]
-        
-        # 各時間足に対応する丸め単位を定義（MNは月初 "MS" に合わせる）
         freq_map = {
-            "M1": "1min",
-            "M5": "5min", 
-            "M15": "15min", 
-            "H1": "1H", 
-            "D1": "1D", 
-            "MN": "MS"  # Month Start (月初)
+            "M1": "1min", "M5": "5min", "M15": "15min", 
+            "H1": "1H", "D1": "1D", "MN": "MS"
         }
         
         if new_view in freq_map:
-            # 現在の時刻を切り替え先の時間足の起点に丸める
-            # 例: 1月20日 15:30 -> MN切り替え時に 1月1日 00:00
-            snapped_dt = current_dt.floor(freq_map[new_view]) if new_view != "MN" else current_dt.replace(day=1, hour=0, minute=0)
+            if new_view == "MN":
+                snapped_dt = current_dt.replace(day=1, hour=0, minute=0, second=0)
+            else:
+                snapped_dt = current_dt.floor(freq_map[new_view])
             
-            # 丸めた時刻のインデックスをM1データから探し直す
             new_idx = df_base.index.get_indexer([snapped_dt], method='pad')[0]
-            
             if new_idx != -1:
                 idx_base = max(WINDOW_SIZES["M1"], new_idx)
-                print(f">> 時間補正: {current_dt} -> {snapped_dt} ({new_view})")
-        
+
+        # 3. ここで現在のビューを更新
         current_view = new_view
         print(f">> 表示切り替え: {current_view}")
-        # 再描画
+
+        # 4. 描画（ここでも formation_mode を忘れずに！）
         visualizer.redraw(
             ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
             hlines_data, stop_lines_data, markers, history, balance, 
             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
             retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-            fibo_mode, fibo_points, selected_obj
+            fibo_mode, fibo_points, selected_obj,
+            formation_mode
         )
-        return # 以降の重複redrawを避ける
+        return  # ここで終わらせないと、下の共通のredrawでまた NameError が出る可能性があります
 
-    visualizer.redraw(
-    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, balance, 
-    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
-)
 def on_motion(e):
     global dragging, selected_obj, fixed_ylim
     if dragging and selected_obj and e.ydata and e.inaxes:
@@ -244,13 +253,16 @@ def on_motion(e):
         e.inaxes.set_ylim(fixed_ylim)
         target_list = hlines_data if selected_obj[0] == 'hline' else stop_lines_data
         target_list[selected_obj[1]][0] = e.ydata
+        # --- 修正箇所：fig.canvas.mpl_connect("motion_notify_event", ...) ---
+        # 以下の部分の末尾に formation_mode を追加
         visualizer.redraw(
-    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, balance, 
-    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
-)
+            ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+            hlines_data, stop_lines_data, markers, history, balance, 
+            is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+            retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+            fibo_mode, fibo_points, selected_obj,
+            formation_mode # ← 追加
+        )
 def on_button_press(e):
     global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance, lot_mode, fixed_lot_size   
     if not e.inaxes or e.xdata is None: return
@@ -270,7 +282,8 @@ def on_button_press(e):
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
+    fibo_mode, fibo_points, selected_obj,
+    formation_mode # ← これを追加
 )
         return # フィボナッチ操作時は他の処理（エントリー等）をスキップ
     # ボタンを押した瞬間の表示範囲を記憶（軸の変動を防止）
@@ -292,7 +305,8 @@ def on_button_press(e):
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
+    fibo_mode, fibo_points, selected_obj,
+    formation_mode # ← これを追加
 ); return
 
     # 新規ライン描画（HキーやShiftキー時）
@@ -324,7 +338,8 @@ def on_button_press(e):
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
+    fibo_mode, fibo_points, selected_obj,
+    formation_mode # ← これを追加
 )
 def on_button_release(e):
     global dragging, fixed_ylim
@@ -353,7 +368,8 @@ def execute_skip():
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
+    fibo_mode, fibo_points, selected_obj,
+    formation_mode # ← これを追加
 )
     
 
@@ -425,7 +441,8 @@ fig.canvas.mpl_connect("motion_notify_event", lambda e: (dragging and selected_o
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
+    fibo_mode, fibo_points, selected_obj,
+    formation_mode # ← これを追加
 ))))
 fig.canvas.mpl_connect("button_release_event", lambda e: globals().update(dragging=False))
 fig.canvas.mpl_connect("close_event", on_close)
@@ -436,7 +453,8 @@ timer.add_callback(lambda: (idx_base < len(df_base)-1 and is_autoplay and (globa
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
+    fibo_mode, fibo_points, selected_obj,
+    formation_mode # ← これを追加
 ))))
 timer.start()
 
@@ -445,7 +463,8 @@ visualizer.redraw(
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj
+    fibo_mode, fibo_points, selected_obj,
+    formation_mode # ← これを追加
 )
 
 

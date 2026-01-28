@@ -9,69 +9,47 @@ import os
 import pandas as pd
 import numpy as np
 
-def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj):
+def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode):
     try:
-        # 1. 基準となる現在時刻
+        # 1. データの準備
         current_time = df_base.index[idx_base]
-        
-        # 2. その時間足のデータを取得
+        v_price = df_base.iloc[idx_base]["Close"]
         full_df = dfs[current_view]
         
-        # 3. 現在時刻「以下」のデータを抽出
-        # ※ ここで .copy() した後に Close を v_price で上書きしていた処理を完全に削除しました。
+        # 2. データの抽出（現在時刻まで）
         plot_df = full_df[full_df.index <= current_time].copy()
         
-        # 4. 表示範囲の切り出し
-        plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
-
-        # 5. 描画（CSVにある Open, High, Low, Close をそのまま使用）
+        if not plot_df.empty:
+            if formation_mode:
+                # 【形成モード】最新の足の終値をM1価格に更新
+                last_idx = plot_df.index[-1]
+                plot_df.at[last_idx, "Close"] = v_price
+                
+                # High/Lowを現在までのM1範囲で更新
+                m1_segment = df_base.loc[last_idx:current_time]
+                plot_df.at[last_idx, "High"] = m1_segment["High"].max()
+                plot_df.at[last_idx, "Low"] = m1_segment["Low"].min()
+        
+        # 3. 描画
         ax_main.clear()
         ax_info.clear()
         ax_info.axis("off")
-
+        
         if not plot_df.empty:
-            # mpf.plot は与えられた DataFrame の値をそのまま描画します
+            # 表示本数にカット
+            plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
+            
+            import mplfinance as mpf
             mpf.plot(plot_df, ax=ax_main, type='candle', style='yahoo')
             ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
-            ax_main.set_title(f"VIEW: {current_view} | {current_time.strftime('%Y-%m-%d %H:%M')}", loc='left', fontsize=10)
-        # --- 以下、描画処理 (変更なし) ---
-        # 3. フィボナッチ描画
-        for f in retracements:
-            p1, p2 = f['p1'], f['p2']
-            diff = p2 - p1
-            for lv in [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0, 1.618]:
-                val = p1 + diff * lv
-                ax_main.add_line(Line2D([0, 1], [val, val], transform=ax_main.get_yaxis_transform(), color="darkgoldenrod", alpha=0.4, linestyle="--", linewidth=0.8))
-        
-        # 4. 水平線・損切り線の描画
-        for i, (p, c, ls) in enumerate(hlines_data + stop_lines_data):
-            sel = selected_obj == ('stop' if i >= len(hlines_data) else 'hline', i if i < len(hlines_data) else i - len(hlines_data))
-            ax_main.add_line(Line2D([0, 1], [p, p], transform=ax_main.get_yaxis_transform(), color="orange" if sel else c, linestyle=ls, linewidth=2 if sel else 1))
+            
+            mode_str = "FORMATION" if formation_mode else "SNAP"
+            ax_main.set_title(f"{current_view} [{mode_str}] | {current_time}", loc='left', fontsize=9)
 
-        # 5. 売買マーカー
-        plot_times = plot_df.index.tolist()
-        for mt, mp, ms, mc, ma in markers:
-            if mt in plot_times:
-                ax_main.scatter(plot_times.index(mt), mp, marker=ms, color=mc, s=100, alpha=ma, zorder=1)
-
-        # 6. 情報パネルの描画
-        sl_p = stop_lines_data[0][0] if stop_lines_data else 0
-        current_lot = max(0.01, round(RISK_PER_TRADE / (max(0.1, abs(v_price - sl_p))/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode=="AUTO" and sl_p else fixed_lot_size
-        total_pips = round(sum(h['pips'] for h in history), 1)
-
-        info = f"VIEW: {current_view}\n"
-        info += f"AUTO: {'ON' if is_autoplay else 'OFF'}\n"
-        if fibo_mode: info += f"MODE: {fibo_mode} ({len(fibo_points)}pt)\n"
-        info += f"BAL : {balance:,.0f}\n"
-        info += f"PIPS: {total_pips:>6}p\n"
-        info += f"LOT : {current_lot:.2f} ({lot_mode})\n"
-        info += f"TRADES: {len(history)}\n" + "-"*15 + "\n"
-        for h in history[-8:]: info += f"{h['side']} {h['lot']:.2f}L {h['pips']:>+5.1f}p\n"
-        ax_info.text(0, 1, info, transform=ax_info.transAxes, verticalalignment="top", fontsize=9, fontfamily="monospace")
-        
         fig.canvas.draw_idle()
-    except Exception as e: print(f"描画エラー: {e}")
-
+        
+    except Exception as e:
+        print(f"Redraw Error: {e}")
 def save_trade_screenshot(df, trade_info, current_view, folder_base=r"C:\Users\81803\OneDrive\画像\リプレイ画像"):
     # 1. 勝ち負けでフォルダを分ける
     sub_folder = "win" if trade_info['profit'] >= 0 else "loss"
