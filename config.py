@@ -4,11 +4,11 @@ import os
 # =========================
 PATHS = {
     "MN":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/A_data.csv",
-    "D1":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/B_data.csv",
-    "H1":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/E_data.csv",
-    "M15": r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/F_data.csv",
-    "M5":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/G_data.csv",
-    "M1":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/H_data.csv"
+    "D1":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/C_data.csv",
+    "H1":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/F_data.csv",
+    "M15": r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/G_data.csv",
+    "M5":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/H_data.csv",
+    "M1":  r"C:/Users/81803/OneDrive/ドキュメント/ChartKei/ChartData/FX/ChartData/KakouData/I_data.csv"
 }
 
 WINDOW_SIZES = {"MN": 60, "D1": 100, "H1": 150, "M15": 200, "M5": 250, "M1": 300}
