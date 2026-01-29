@@ -2,7 +2,7 @@ import sqlite3
 import csv
 from datetime import datetime
 
-def create_lookup_db_lightweight(csv_path, db_path='tick_analysis.db', chunk_size=100000):
+def create_lookup_db_lightweight(csv_path, db_path=r'C:\Users\81803\OneDrive\ドキュメント\tick_analysis.db', chunk_size=100000):
     """
     メモリを消費せずに巨大CSVをSQLiteに変換する
     """
