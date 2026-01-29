@@ -41,4 +41,4 @@ def plot_hybrid_tick_chart(csv_path):
     plt.show()
 
 # 実行
-# plot_hybrid_tick_chart('C:/Users/81803/OneDrive/ドキュメント/EURUSD_tick_2004_2025_analyzed_1000tick.csv')
+plot_hybrid_tick_chart(r"C:\Users\81803\OneDrive\ドキュメント\EURUSD_tick_2004_2025_analyzed.csv")
