@@ -443,14 +443,7 @@ ax_info = fig.add_subplot(gs[0, 1]) # 情報パネル
 fig.canvas.mpl_connect("key_press_event", on_key_press)
 fig.canvas.mpl_connect("key_release_event", lambda e: pressed.discard(e.key))
 fig.canvas.mpl_connect("button_press_event", on_button_press)
-fig.canvas.mpl_connect("motion_notify_event", lambda e: (dragging and selected_obj and e.ydata and (globals().update(dragging=True) or ((hlines_data[selected_obj[1]] if selected_obj[0]=='hline' else stop_lines_data[selected_obj[1]]).__setitem__(0, e.ydata)) or visualizer.redraw(
-    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, balance, 
-    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
-))))
+fig.canvas.mpl_connect("motion_notify_event", on_motion)
 fig.canvas.mpl_connect("button_release_event", lambda e: globals().update(dragging=False))
 fig.canvas.mpl_connect("close_event", on_close)
 
