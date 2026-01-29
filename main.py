@@ -247,21 +247,28 @@ def on_key_press(e):
         return  # ここで終わらせないと、下の共通のredrawでまた NameError が出る可能性があります
 
 def on_motion(e):
-    global dragging, selected_obj, fixed_ylim
-    if dragging and selected_obj and e.ydata and e.inaxes:
-        # ドラッグ中は記憶した範囲を強制適用して画面の揺れを防ぐ
+    global dragging, selected_obj, fixed_ylim, hlines_data, stop_lines_data
+    
+    # マウスがチャート内にあり、かつドラッグ中のオブジェクトがある場合
+    if dragging and selected_obj and e.ydata is not None and e.inaxes:
+        # 1. 軸の範囲を固定（ガタつき防止）
         e.inaxes.set_ylim(fixed_ylim)
-        target_list = hlines_data if selected_obj[0] == 'hline' else stop_lines_data
-        target_list[selected_obj[1]][0] = e.ydata
-        # --- 修正箇所：fig.canvas.mpl_connect("motion_notify_event", ...) ---
-        # 以下の部分の末尾に formation_mode を追加
+        
+        # 2. 選択中のラインの価格を更新
+        obj_type, idx = selected_obj
+        if obj_type == 'hline':
+            hlines_data[idx][0] = e.ydata
+        elif obj_type == 'stop':
+            stop_lines_data[idx][0] = e.ydata
+            
+        # 3. 再描画を実行
         visualizer.redraw(
             ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
             hlines_data, stop_lines_data, markers, history, balance, 
             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
             retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
             fibo_mode, fibo_points, selected_obj,
-            formation_mode # ← 追加
+            formation_mode # 忘れずに追加
         )
 def on_button_press(e):
     global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance, lot_mode, fixed_lot_size   
