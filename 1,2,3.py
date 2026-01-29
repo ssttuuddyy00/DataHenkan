@@ -51,5 +51,5 @@ def analyze_from_existing_csv(tick_1min_path):
     return absorption_buy, absorption_sell
 
 # 実行
-# path = r'C:/Users/81803/OneDrive/ドキュメント/EURUSD_tick_2004_2025_tick_stats_1min.csv'
-# abs_buy, abs_sell = analyze_from_existing_csv(path)
+path = r'C:/Users/81803/OneDrive/ドキュメント/EURUSD_tick_2004_2025_tick_stats_1min.csv'
+abs_buy, abs_sell = analyze_from_existing_csv(path)
