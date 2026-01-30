@@ -79,27 +79,29 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
             labels = [display_df.index[int(i)].strftime('%H:%M') for i in ticks]
             ax_main.set_xticklabels(labels, fontsize=8) # その後にラベルを貼る
             # --- フィボナッチ描画（修正版） ---
+            # --- フィボナッチ描画 (価格のみを使用) ---
+            
+            # 1. リトレースメント (2点間)
             for f in retracements:
                 p1, p2 = f['p1'], f['p2']
-                diff = p2 - p1
+                diff = p1 - p2
+                # 一般的な比率
                 levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0]
                 for lv in levels:
-                    val = p1 + diff * lv
-                    # 画面全体に横線を引く
-                    ax_h1.axhline(val, color="darkgoldenrod", alpha=0.5, linestyle="--", linewidth=0.8)
-                    # ラベルを右端に配置
-                    ax_h1.text(0.98, val, f"{lv*100:>5.1f}%", transform=ax_h1.get_yaxis_transform(),
-                            fontsize=7, color="darkgoldenrod", ha='right', va='bottom')
-            
-            for f in extensions:
-                p1, p2, p3 = f['p1'], f['p2'], f['p3']
-                diff = p2 - p1
-                levels = [0.618, 1.0, 1.618, 2.618]
-                for lv in levels:
-                    val = p3 + diff * lv
-                    ax_h1.axhline(val, color="forestgreen", alpha=0.5, linestyle="--", linewidth=0.8)
-                    ax_h1.text(0.02, val, f"Exp {lv*100:.1f}%", transform=ax_h1.get_yaxis_transform(),
-                            fontsize=7, color="forestgreen", va='bottom')
+                    lv_p = p2 + diff * lv
+                    ax_main.axhline(lv_p, color='orange', linestyle='--', alpha=0.6, linewidth=0.8)
+                    # 右端に価格や比率を表示したい場合はここ
+                    # ax_main.text(len(display_df), lv_p, f'{lv*100}%', fontsize=7, color='orange')
+
+            # 2. エクステンション (3点間: 起点・高値・押し目)
+            for e_f in extensions:
+                ep1, ep2, ep3 = e_f['p1'], e_f['p2'], e_f['p3']
+                # 起点(ep1)から高値(ep2)までの幅を、押し目(ep3)から投影する
+                exp_diff = ep2 - ep1
+                exp_levels = [0, 0.618, 1.0, 1.618, 2.618]
+                for lv in exp_levels:
+                    lv_p = ep3 + exp_diff * lv
+                    ax_main.axhline(lv_p, color='cyan', linestyle='-.', alpha=0.6, linewidth=0.8)
             # --- 仕上げ（tight_layoutの警告対策） ---
             # tight_layout() は使わず、手動で余白を調整
             fig.subplots_adjust(left=0.07, right=0.93, bottom=0.1, top=0.95)

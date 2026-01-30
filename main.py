@@ -281,7 +281,7 @@ def on_button_press(e):
     # フィボナッチ打点
     if fibo_mode:
         # 価格(y)と位置(x)をセットで保存することを推奨
-        fibo_points.append((e.xdata, e.ydata)) 
+        fibo_points.append(e.ydata) 
         print(f"Point {len(fibo_points)} captured at {e.ydata:.3f}")
 
         if fibo_mode == "RETRACE" and len(fibo_points) == 2:
