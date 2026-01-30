@@ -358,6 +358,21 @@ def on_button_press(e):
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
         entry_lot = max(0.01, round(RISK_PER_TRADE / (abs(curr_p - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode == "AUTO" and sl_p else (fixed_lot_size if lot_mode == "FIX" else 0.1)
 
+        # エントリー・決済価格の決定ロジック
+        if formation_mode:
+            # 【FORMATIONモード】
+            # 現在動いているM1のCloseを「現在のリアルタイム価格」として採用
+            curr_p = df_base.iloc[idx_base]["Close"]
+            curr_t = df_base.index[idx_base]
+        else:
+            # 【SNAPモード】
+            # current_view（H1やD1など）の「確定した足」の終値を採用
+            # dfs[current_view] から、現在時刻以下の最新の確定足を取得
+            view_df = DFS[current_view]
+            valid_view_df = view_df[view_df.index <= df_base.index[idx_base]]
+            curr_p = valid_view_df.iloc[-1]["Close"]
+            curr_t = valid_view_df.index[-1]
+
         if "b" in pressed or "v" in pressed:
             side = "BUY" if "b" in pressed else "SELL"
             trade = {"side": side, "price": curr_p, "time": curr_t, "lot": entry_lot, "sl": sl_p, "tp": 0, "symbol": "FX"}
