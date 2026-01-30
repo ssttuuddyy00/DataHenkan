@@ -154,7 +154,6 @@ def on_key_press(e):
 
     
     if e.key == "a": is_autoplay = not is_autoplay
-    # 時間足切り替え（追加）
    
     elif e.key == " ": execute_skip()
     elif e.key == "f": # リトレースメント開始
@@ -177,8 +176,7 @@ def on_key_press(e):
                         idx_base += 1
                         if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
                             # ★ ここに画像保存を追加！ ★
-                            if history[-1]['profit'] < 0:
-                                visualizer.save_trade_screenshot(
+                            visualizer.save_trade_screenshot(
     df_base, 
     history[-1], 
     current_view, 
@@ -212,9 +210,6 @@ def on_key_press(e):
         selected_obj = None
   
     # 1〜6の数字キー判定を確実に
-   # 1〜6の数字キー判定
-    # --- 修正箇所：数字キー判定の中 ---
-    # 1〜6の数字キー判定
     if e.key in ["1", "2", "3", "4", "5", "6"]:
         # 1. ここで new_view を定義（これが漏れると NameError）
         new_view = VIEW_MAP[e.key]
@@ -382,8 +377,7 @@ def on_button_press(e):
             profit = round(pips * ONE_LOT_PIPS_VALUE * trade["lot"], 0)
             history.append({**trade, "exit_p": curr_p, "exit_time": curr_t, "pips": pips, "profit": profit})
             # ★ ここに画像保存を追加！ ★
-            if profit < 0: # 負けトレードなら
-                visualizer.save_trade_screenshot(
+            visualizer.save_trade_screenshot(
     df_base, 
     history[-1], 
     current_view, 
@@ -416,8 +410,7 @@ def execute_skip():
         idx_base += 1
         if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
             # ★ ここに画像保存を追加！ ★
-            if history[-1]['profit'] < 0:
-                visualizer.save_trade_screenshot(
+            visualizer.save_trade_screenshot(
     df_base, 
     history[-1], 
     current_view, 
