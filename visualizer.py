@@ -48,6 +48,28 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
             # これにより、最新足が「右から2番目」になり、マーカー位置が安定します
             mpf.plot(display_df, ax=ax_main, type='candle', style='yahoo')
             
+            # --- ここから追加：価格軸と時間軸の見栄え調整 ---
+            
+            # 1. 価格軸（右軸）の調整：5pipsや10pips刻みに設定
+            # 現在の表示範囲の最大・最小価格を取得
+            ymin, ymax = ax_main.get_ylim()
+            # 0.01刻み（10pipsごと）などでグリッドを引きやすくする
+            from matplotlib.ticker import MultipleLocator
+            ax_main.yaxis.set_major_locator(MultipleLocator(0.1)) # 10pips刻みの目盛り
+            ax_main.yaxis.set_minor_locator(MultipleLocator(0.01)) # 1pips刻みの補助目盛り
+            
+            # 2. 時間軸（下軸）の調整：表示本数に合わせて適切な間隔で時刻を表示
+            ax_main.xaxis.set_major_locator(MultipleLocator(max(1, len(display_df)//5)))
+            
+            # 3. グリッド線を表示（ラウンドナンバーを見やすく）
+            ax_main.grid(True, which='major', axis='both', color='gray', linestyle='--', alpha=0.3)
+            ax_main.grid(True, which='minor', axis='y', color='gray', linestyle=':', alpha=0.1)
+            
+            # 時刻ラベルのフォーマットを読みやすく（15:00 等）
+            import matplotlib.dates as mdates
+            # インデックスがDatetimeIndexの場合
+            labels = [display_df.index[int(i)].strftime('%H:%M') for i in ax_main.get_xticks() if 0 <= i < len(display_df)]
+            ax_main.set_xticklabels(labels, fontsize=8)
             # 横軸の範囲を「データの長さ」より1つ大きく設定する
             ax_main.set_xlim(-0.5, len(display_df) + 0.5) 
 
