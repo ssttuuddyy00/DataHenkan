@@ -57,18 +57,25 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
                 ax_main.axhline(val, color=color, linestyle=style, linewidth=2.5 if is_selected else 1.0)
 
             # --- マーカー（エントリー・決済印）の描画 ---
+            # --- マーカー（エントリー・決済印）の描画 ---
             for m_time, m_price, m_marker, m_color, m_alpha in markers:
-                if m_time in display_df.index:
-                    # display_df内での位置（0〜39とか）を取得
-                    idx_pos = display_df.index.get_loc(m_time)
+                # 1. そもそも表示範囲内にあるかチェック
+                if m_time >= display_df.index[0]:
                     
-                    # 保存された正確な価格に打点
+                    # 2. 現在の最新足の時刻を取得
+                    last_time = display_df.index[-1]
+                    
+                    # 3. マーカーの時刻が「最新足の開始時刻」と同じ、もしくはそれ以降（形成中）なら
+                    # インデックス番号で「一番右端」を指定する
+                    if m_time >= last_time:
+                        idx_pos = len(display_df) - 1
+                    else:
+                        # 過去の足なら、その位置を探す
+                        idx_pos = display_df.index.get_indexer([m_time], method='pad')[0]
+                    
+                    # 描画（横位置 idx_pos, 縦位置 m_price）
                     ax_main.scatter(idx_pos, m_price, marker=m_marker, color=m_color, 
                                     s=200, alpha=m_alpha, zorder=5, edgecolors='white')
-                    
-                    # 価格位置の補助線
-                    ax_main.hlines(m_price, idx_pos - 0.4, idx_pos + 0.4, colors=m_color, alpha=0.6)
-
             # タイトルなど
             ax_main.set_title(f"{current_view} | {current_time}", loc='left', fontsize=9)
 
