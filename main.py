@@ -271,15 +271,24 @@ def on_motion(e):
             formation_mode # 忘れずに追加
         )
 def on_button_press(e):
-    global retracements, extensions, dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance, lot_mode, fixed_lot_size, hlines_data, stop_lines_data  
+    # 修正：retracements と extensions を global に追加
+    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, \
+           trade, balance, lot_mode, fixed_lot_size, hlines_data, \
+           stop_lines_data, retracements, extensions # ←ここに追加
+    
     if not e.inaxes or e.xdata is None: return
-    fixed_ylim = e.inaxes.get_ylim()
-    cp, ct = df_base.iloc[idx_base]["Close"], df_base.index[idx_base]    
+    
     # フィボナッチ打点
     if fibo_mode:
-        fibo_points.append(e.ydata)
+        # 価格(y)と位置(x)をセットで保存することを推奨
+        fibo_points.append((e.xdata, e.ydata)) 
+        print(f"Point {len(fibo_points)} captured at {e.ydata:.3f}")
+
         if fibo_mode == "RETRACE" and len(fibo_points) == 2:
-            retracements.append({'p1': fibo_points[0], 'p2': fibo_points[1]}); fibo_mode, fibo_points = None, []
+            # 2点揃ったらリストを更新
+            retracements.append({'p1': fibo_points[0], 'p2': fibo_points[1]})
+            print("Retracement defined!")
+            fibo_mode, fibo_points = None, []
         elif fibo_mode == "EXT" and len(fibo_points) == 3:
             # ここ！ extensions.appen になっていたのを append に修正
             extensions.append({'p1': fibo_points[0], 'p2': fibo_points[1], 'p3': fibo_points[2]})
