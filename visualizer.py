@@ -16,7 +16,6 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
         current_time = df_base.index[idx_base]
         v_price = df_base.iloc[idx_base]["Close"]
         full_df = DFS[current_view]
-        
         plot_df = full_df[full_df.index <= current_time].copy()
         
         if not plot_df.empty and formation_mode:
@@ -72,31 +71,32 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
                     ax_main.scatter(idx_pos, m_price, marker=m_marker, color=m_color, s=200, alpha=m_alpha, zorder=5, edgecolors=edge)
                     # マーカー位置に短い水平ガイド
                     ax_main.hlines(m_price, idx_pos - 0.5, idx_pos + 0.5, colors=m_color, alpha=0.5, linestyles='--')
-            # --- フィボナッチ・リトレースメントの描画 ---
-            for rect_data in retracements:
-                # rect_data が {p1: (time, price), p2: (time, price)} の形式だと仮定
-                p1_time, p1_price = rect_data['p1']
-                p2_time, p2_price = rect_data['p2']
-                
-                # 表示範囲内のインデックスを取得
-                if p1_time in display_df.index and p2_time in display_df.index:
-                    idx1 = display_df.index.get_loc(p1_time)
-                    idx2 = display_df.index.get_loc(p2_time)
-                    
-                    # 矩形（背景色）の描画
-                    width = idx2 - idx1
-                    height = p2_price - p1_price
-                    rect = Rectangle((idx1, p1_price), width, height, 
-                                     color='orange', alpha=0.2, zorder=1)
+            
+            # --- 時間軸目盛りの警告対策 ---
+            step = max(1, len(display_df) // 6)
+            ticks = np.arange(0, len(display_df), step)
+            ax_main.set_xticks(ticks) # 先に位置を固定
+            labels = [display_df.index[int(i)].strftime('%H:%M') for i in ticks]
+            ax_main.set_xticklabels(labels, fontsize=8) # その後にラベルを貼る
+            # --- フィボナッチ（リトレースメント）の描画 ---
+            for r in retracements:
+                # r = {'p1': (time1, price1), 'p2': (time2, price2)}
+                t1, p1 = r['p1']
+                t2, p2 = r['p2']
+                if t1 in display_df.index and t2 in display_df.index:
+                    x1 = display_df.index.get_loc(t1)
+                    x2 = display_df.index.get_loc(t2)
+                    # 背景の矩形
+                    rect = Rectangle((min(x1, x2), min(p1, p2)), abs(x2-x1), abs(p2-p1), color='orange', alpha=0.1)
                     ax_main.add_patch(rect)
-                    
-                    # 0%, 23.6%, 38.2%, 50%, 61.8%, 100% のライン
-                    diff = p1_price - p2_price
-                    levels = [0, 0.236, 0.382, 0.5, 0.618, 1.0]
-                    for lv in levels:
-                        lv_price = p2_price + diff * lv
-                        ax_main.hlines(lv_price, idx1, idx2 + 5, colors='orange', 
-                                       linestyles='--', alpha=0.5, linewidth=0.8)
+                    # 各ライン（0, 38.2, 50, 61.8, 100）
+                    diff = p1 - p2
+                    for lv in [0, 0.382, 0.5, 0.618, 1.0]:
+                        val = p2 + diff * lv
+                        ax_main.hlines(val, x1, x2 + 5, colors='orange', linestyles='--', alpha=0.5)
+            # --- 仕上げ（tight_layoutの警告対策） ---
+            # tight_layout() は使わず、手動で余白を調整
+            fig.subplots_adjust(left=0.07, right=0.93, bottom=0.1, top=0.95)
             ax_main.set_title(f"{current_view} | {current_time} | Price: {v_price:.3f}", loc='left', fontsize=10)
 
         # チャート全体をウィンドウいっぱいに広げる（余白調整）
