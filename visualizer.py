@@ -29,7 +29,7 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
         
         if not plot_df.empty:
             if formation_mode:
-                # 【形成モード】最新の足の価格を更新
+                # 最新足の終値・高値・安値を現在のM1価格に基づいて更新
                 last_idx = plot_df.index[-1]
                 plot_df.at[last_idx, "Close"] = v_price
                 m1_segment = df_base.loc[last_idx:current_time]
@@ -48,23 +48,39 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
             # --- ローソク足描画 ---
             mpf.plot(plot_df, ax=ax_main, type='candle', style='yahoo')
             
-            # --- 【追加】水平線の描画 ---
+            # --- 水平線の描画 ---
             for i, (val, color, style) in enumerate(hlines_data):
                 is_selected = (selected_obj and selected_obj[0]=='hline' and selected_obj[1]==i)
-                ax_main.axhline(val, color=color, linestyle=style, linewidth=2.5 if is_selected else 1.0)
+                ax_main.axhline(val, color=color, linestyle=style, linewidth=2.5 if is_selected else 1.0, zorder=3)
 
             for i, (val, color, style) in enumerate(stop_lines_data):
                 is_selected = (selected_obj and selected_obj[0]=='stop' and selected_obj[1]==i)
-                ax_main.axhline(val, color=color, linestyle=style, linewidth=3.0 if is_selected else 2.0)
+                ax_main.axhline(val, color=color, linestyle=style, linewidth=3.0 if is_selected else 2.0, zorder=3)
 
-            # --- 【追加】エントリー・決済マーカーの描画 ---
+            # --- マーカー（エントリー・決済印）の描画 ---
+            # 時間軸のズレ（1本過去に出る現象）を補正し、価格位置に水平ガイドを表示
             for m_time, m_price, m_marker, m_color, m_alpha in markers:
-                if m_time in plot_df.index:
-                    # 時間のインデックス位置を取得してscatterで描画
+                last_time_in_plot = plot_df.index[-1]
+                
+                # 位置の判定
+                if m_time >= last_time_in_plot:
+                    # 最新足（またはそれ以降）なら一番右端
+                    idx_pos = len(plot_df) - 1
+                elif m_time in plot_df.index:
+                    # 過去足ならその位置を特定
                     idx_pos = plot_df.index.get_loc(m_time)
-                    ax_main.scatter(idx_pos, m_price, marker=m_marker, color=m_color, s=200, alpha=m_alpha, zorder=5)
-            
-            # 軸の設定とタイトル
+                else:
+                    continue
+
+                # 正確な約定価格（m_price）に打点
+                ax_main.scatter(idx_pos, m_price, marker=m_marker, color=m_color, 
+                                s=250, alpha=m_alpha, zorder=5, edgecolors='white')
+                
+                # 約定価格がどのレベルか分かりやすくするための水平補助線（最新足付近のみ）
+                ax_main.hlines(m_price, idx_pos - 0.4, idx_pos + 0.4, 
+                               colors=m_color, linestyles='--', alpha=0.6, linewidth=1)
+
+            # 4. 軸とタイトルの設定
             ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
             mode_str = "FORMATION" if formation_mode else "SNAP"
             ax_main.set_title(f"{current_view} [{mode_str}] | {current_time}", loc='left', fontsize=9)
@@ -73,7 +89,6 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
         
     except Exception as e:
         print(f"Redraw Error: {e}")
-
 # (以下、save_trade_screenshot などの他の関数はそのまま)
 def save_trade_screenshot(df, trade_info, current_view, folder_base=r"C:\Users\81803\OneDrive\画像\リプレイ画像"):
     # 1. 勝ち負けでサブフォルダを決定 (HTMLレポートが機能するために重要)
