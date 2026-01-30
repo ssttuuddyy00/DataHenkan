@@ -121,7 +121,7 @@ def on_key_press(e):
         visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
                          hlines_data, stop_lines_data, markers, history, balance, 
                          is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                         retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                         retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
                          fibo_mode, fibo_points, selected_obj, formation_mode)
         return
 
@@ -141,7 +141,7 @@ def on_key_press(e):
         visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
                          hlines_data, stop_lines_data, markers, history, balance, 
                          is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                         retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                         retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
                          fibo_mode, fibo_points, selected_obj, formation_mode)
         return
  
@@ -187,7 +187,7 @@ def on_key_press(e):
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
@@ -197,7 +197,7 @@ def on_key_press(e):
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
@@ -240,7 +240,7 @@ def on_key_press(e):
             ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
             hlines_data, stop_lines_data, markers, history, balance, 
             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-            retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+            retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
             fibo_mode, fibo_points, selected_obj,
             formation_mode
         )
@@ -266,7 +266,7 @@ def on_motion(e):
             ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
             hlines_data, stop_lines_data, markers, history, balance, 
             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-            retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+            retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
             fibo_mode, fibo_points, selected_obj,
             formation_mode # 忘れずに追加
         )
@@ -297,7 +297,7 @@ def on_button_press(e):
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
@@ -320,7 +320,7 @@ def on_button_press(e):
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 ); return
@@ -342,7 +342,7 @@ def on_button_press(e):
             visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
                              hlines_data, stop_lines_data, markers, history, balance, 
                              is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                             retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                             retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
                              fibo_mode, fibo_points, selected_obj, formation_mode)
             return # ラインを引いたら他の判定（エントリーなど）をさせない
 
@@ -354,7 +354,7 @@ def on_button_press(e):
             visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
                              hlines_data, stop_lines_data, markers, history, balance, 
                              is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                             retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                             retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
                              fibo_mode, fibo_points, selected_obj, formation_mode)
             return
         
@@ -398,7 +398,7 @@ def on_button_press(e):
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
@@ -432,7 +432,7 @@ def execute_skip():
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
@@ -510,7 +510,7 @@ timer.add_callback(lambda: (idx_base < len(df_base)-1 and is_autoplay and (globa
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 ))))
@@ -520,7 +520,7 @@ visualizer.redraw(
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )

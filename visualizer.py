@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 from matplotlib.ticker import MultipleLocator
 
-def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode):
+def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extension, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode):
     try:
         # 1. データの準備
         current_time = df_base.index[idx_base]
@@ -78,29 +78,35 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
             ax_main.set_xticks(ticks) # 先に位置を固定
             labels = [display_df.index[int(i)].strftime('%H:%M') for i in ticks]
             ax_main.set_xticklabels(labels, fontsize=8) # その後にラベルを貼る
-            # --- フィボナッチ（リトレースメント）の描画 ---
-            for r in retracements:
-                # r = {'p1': (time1, price1), 'p2': (time2, price2)}
-                t1, p1 = r['p1']
-                t2, p2 = r['p2']
-                if t1 in display_df.index and t2 in display_df.index:
-                    x1 = display_df.index.get_loc(t1)
-                    x2 = display_df.index.get_loc(t2)
-                    # 背景の矩形
-                    rect = Rectangle((min(x1, x2), min(p1, p2)), abs(x2-x1), abs(p2-p1), color='orange', alpha=0.1)
-                    ax_main.add_patch(rect)
-                    # 各ライン（0, 38.2, 50, 61.8, 100）
-                    diff = p1 - p2
-                    for lv in [0, 0.382, 0.5, 0.618, 1.0]:
-                        val = p2 + diff * lv
-                        ax_main.hlines(val, x1, x2 + 5, colors='orange', linestyles='--', alpha=0.5)
+            # --- フィボナッチ描画（修正版） ---
+            for f in retracements:
+                p1, p2 = f['p1'], f['p2']
+                diff = p2 - p1
+                levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0]
+                for lv in levels:
+                    val = p1 + diff * lv
+                    # 画面全体に横線を引く
+                    ax_h1.axhline(val, color="darkgoldenrod", alpha=0.5, linestyle="--", linewidth=0.8)
+                    # ラベルを右端に配置
+                    ax_h1.text(0.98, val, f"{lv*100:>5.1f}%", transform=ax_h1.get_yaxis_transform(),
+                            fontsize=7, color="darkgoldenrod", ha='right', va='bottom')
+            
+            for f in extensions:
+                p1, p2, p3 = f['p1'], f['p2'], f['p3']
+                diff = p2 - p1
+                levels = [0.618, 1.0, 1.618, 2.618]
+                for lv in levels:
+                    val = p3 + diff * lv
+                    ax_h1.axhline(val, color="forestgreen", alpha=0.5, linestyle="--", linewidth=0.8)
+                    ax_h1.text(0.02, val, f"Exp {lv*100:.1f}%", transform=ax_h1.get_yaxis_transform(),
+                            fontsize=7, color="forestgreen", va='bottom')
             # --- 仕上げ（tight_layoutの警告対策） ---
             # tight_layout() は使わず、手動で余白を調整
             fig.subplots_adjust(left=0.07, right=0.93, bottom=0.1, top=0.95)
             ax_main.set_title(f"{current_view} | {current_time} | Price: {v_price:.3f}", loc='left', fontsize=10)
 
         # チャート全体をウィンドウいっぱいに広げる（余白調整）
-        fig.tight_layout()
+        #fig.tight_layout()
         fig.subplots_adjust(right=0.93) # 右側の目盛り数字が入るスペースだけ確保
         fig.canvas.draw_idle()
 
