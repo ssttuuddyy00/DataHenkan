@@ -9,6 +9,14 @@ import os
 import pandas as pd
 import numpy as np
 
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+from matplotlib.lines import Line2D
+import mplfinance as mpf
+import os
+import pandas as pd
+import numpy as np
+
 def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode):
     try:
         # 1. データの準備
@@ -16,11 +24,12 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
         v_price = df_base.iloc[idx_base]["Close"]
         full_df = dfs[current_view]
         
-        # 2. データの抽出
+        # 2. データの抽出（現在時刻まで）
         plot_df = full_df[full_df.index <= current_time].copy()
         
         if not plot_df.empty:
             if formation_mode:
+                # 【形成モード】最新の足の価格を更新
                 last_idx = plot_df.index[-1]
                 plot_df.at[last_idx, "Close"] = v_price
                 m1_segment = df_base.loc[last_idx:current_time]
@@ -39,23 +48,23 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
             # --- ローソク足描画 ---
             mpf.plot(plot_df, ax=ax_main, type='candle', style='yahoo')
             
-            # --- 【ここから重要】水平線の描画を追加 ---
-            # 1. 水平線 (Hキーで引いたもの)
+            # --- 【追加】水平線の描画 ---
             for i, (val, color, style) in enumerate(hlines_data):
-                # 選択中のラインは太く、または色を変えて強調
-                is_selected = (selected_obj is not None and selected_obj[0] == 'hline' and selected_obj[1] == i)
-                width = 2.5 if is_selected else 1.0
-                ax_main.axhline(val, color=color, linestyle=style, linewidth=width, alpha=0.8)
+                is_selected = (selected_obj and selected_obj[0]=='hline' and selected_obj[1]==i)
+                ax_main.axhline(val, color=color, linestyle=style, linewidth=2.5 if is_selected else 1.0)
 
-            # 2. 損切りライン (Shiftキー)
             for i, (val, color, style) in enumerate(stop_lines_data):
-                is_selected = (selected_obj is not None and selected_obj[0] == 'stop' and selected_obj[1] == i)
-                width = 3.0 if is_selected else 2.0
-                ax_main.axhline(val, color=color, linestyle=style, linewidth=width, alpha=0.9)
+                is_selected = (selected_obj and selected_obj[0]=='stop' and selected_obj[1]==i)
+                ax_main.axhline(val, color=color, linestyle=style, linewidth=3.0 if is_selected else 2.0)
+
+            # --- 【追加】エントリー・決済マーカーの描画 ---
+            for m_time, m_price, m_marker, m_color, m_alpha in markers:
+                if m_time in plot_df.index:
+                    # 時間のインデックス位置を取得してscatterで描画
+                    idx_pos = plot_df.index.get_loc(m_time)
+                    ax_main.scatter(idx_pos, m_price, marker=m_marker, color=m_color, s=200, alpha=m_alpha, zorder=5)
             
-            # --- 既存のマーカー（エントリー印など）があれば描画 ---
-            # (必要に応じて markers のループ処理もここに追加)
-            
+            # 軸の設定とタイトル
             ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
             mode_str = "FORMATION" if formation_mode else "SNAP"
             ax_main.set_title(f"{current_view} [{mode_str}] | {current_time}", loc='left', fontsize=9)
@@ -64,6 +73,8 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
         
     except Exception as e:
         print(f"Redraw Error: {e}")
+
+# (以下、save_trade_screenshot などの他の関数はそのまま)
 def save_trade_screenshot(df, trade_info, current_view, folder_base=r"C:\Users\81803\OneDrive\画像\リプレイ画像"):
     # 1. 勝ち負けでフォルダを分ける
     sub_folder = "win" if trade_info['profit'] >= 0 else "loss"
