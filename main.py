@@ -276,7 +276,7 @@ def on_motion(e):
             formation_mode # 忘れずに追加
         )
 def on_button_press(e):
-    global hlines_data, stop_lines_data, dragging, selected_obj, fixed_ylim    
+    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance, lot_mode, fixed_lot_size, hlines_data, stop_lines_data   
     if not e.inaxes or e.xdata is None: return
     fixed_ylim = e.inaxes.get_ylim()
     cp, ct = df_base.iloc[idx_base]["Close"], df_base.index[idx_base]    
