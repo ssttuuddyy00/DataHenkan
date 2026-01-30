@@ -54,11 +54,23 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
             # チャート右側に少しだけ余白を作り、最新足を見やすくする
             ax_main.set_xlim(-0.5, len(display_df) + 1.5) 
 
-            # --- 水平線の描画 ---
+            # --- 水平線の描画 (ラベル付き) ---
             for i, (val, color, style) in enumerate(hlines_data):
                 is_selected = (selected_obj and selected_obj[0]=='hline' and selected_obj[1]==i)
                 ax_main.axhline(val, color=color, linestyle=style, linewidth=2.5 if is_selected else 1.2, zorder=3)
+                # 右端に価格を表示
+                ax_main.text(len(display_df) + 0.2, val, f'{val:.3f}', 
+                             va='center', fontsize=9, color=color, 
+                             bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1))
 
+            # --- 損切りラインの描画 (ラベル付き) ---
+            for val, color, style in stop_lines_data:
+                ax_main.axhline(val, color=color, linestyle=style, linewidth=1.5, zorder=4)
+                # 右端に「SL: 価格」と表示
+                ax_main.text(len(display_df) + 0.2, val, f'SL: {val:.3f}', 
+                             va='bottom', fontsize=9, color=color, fontweight='bold',
+                             bbox=dict(facecolor='white', alpha=0.8, edgecolor=color, pad=1))
+                
             # --- マーカー（エントリー・決済印）の描画 ---
             for m_time, m_price, m_marker, m_color, m_alpha in markers:
                 if m_time >= display_df.index[0]:
@@ -72,17 +84,15 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
                     # マーカー位置に短い水平ガイド
                     ax_main.hlines(m_price, idx_pos - 0.5, idx_pos + 0.5, colors=m_color, alpha=0.5, linestyles='--')
             
+            
+            # --- フィボナッチ描画 (ラベル付き) ---
+            
             # --- 時間軸目盛りの警告対策 ---
             step = max(1, len(display_df) // 6)
             ticks = np.arange(0, len(display_df), step)
             ax_main.set_xticks(ticks) # 先に位置を固定
             labels = [display_df.index[int(i)].strftime('%H:%M') for i in ticks]
             ax_main.set_xticklabels(labels, fontsize=8) # その後にラベルを貼る
-            # --- フィボナッチ描画（修正版） ---
-            # --- フィボナッチ描画 (価格のみを使用) ---
-            
-            # 1. リトレースメント (2点間)
-           # --- フィボナッチ描画 (ラベル付き) ---
             
             # 1. リトレースメント
             for f in retracements:

@@ -156,7 +156,7 @@ def on_key_press(e):
     if e.key == "a": is_autoplay = not is_autoplay
    
     elif e.key == " ": execute_skip()
-    elif e.key == "f": # リトレースメント開始
+    elif e.key == "j": # リトレースメント開始
         fibo_mode, fibo_points = "RETRACE", []
         print(">> フィボナッチ・リトレースメント: 2点クリックしてください")
     elif e.key == "e": # エクステンション開始
