@@ -16,21 +16,18 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
         v_price = df_base.iloc[idx_base]["Close"]
         full_df = dfs[current_view]
         
-        # 2. データの抽出（現在時刻まで）
+        # 2. データの抽出
         plot_df = full_df[full_df.index <= current_time].copy()
         
         if not plot_df.empty:
             if formation_mode:
-                # 【形成モード】最新の足の終値をM1価格に更新
                 last_idx = plot_df.index[-1]
                 plot_df.at[last_idx, "Close"] = v_price
-                
-                # High/Lowを現在までのM1範囲で更新
                 m1_segment = df_base.loc[last_idx:current_time]
                 plot_df.at[last_idx, "High"] = m1_segment["High"].max()
                 plot_df.at[last_idx, "Low"] = m1_segment["Low"].min()
         
-        # 3. 描画
+        # 3. 描画クリア
         ax_main.clear()
         ax_info.clear()
         ax_info.axis("off")
@@ -39,10 +36,27 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
             # 表示本数にカット
             plot_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
             
-            import mplfinance as mpf
+            # --- ローソク足描画 ---
             mpf.plot(plot_df, ax=ax_main, type='candle', style='yahoo')
-            ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
             
+            # --- 【ここから重要】水平線の描画を追加 ---
+            # 1. 水平線 (Hキーで引いたもの)
+            for i, (val, color, style) in enumerate(hlines_data):
+                # 選択中のラインは太く、または色を変えて強調
+                is_selected = (selected_obj is not None and selected_obj[0] == 'hline' and selected_obj[1] == i)
+                width = 2.5 if is_selected else 1.0
+                ax_main.axhline(val, color=color, linestyle=style, linewidth=width, alpha=0.8)
+
+            # 2. 損切りライン (Shiftキー)
+            for i, (val, color, style) in enumerate(stop_lines_data):
+                is_selected = (selected_obj is not None and selected_obj[0] == 'stop' and selected_obj[1] == i)
+                width = 3.0 if is_selected else 2.0
+                ax_main.axhline(val, color=color, linestyle=style, linewidth=width, alpha=0.9)
+            
+            # --- 既存のマーカー（エントリー印など）があれば描画 ---
+            # (必要に応じて markers のループ処理もここに追加)
+            
+            ax_main.set_xlim(-0.5, len(plot_df) - 0.5)
             mode_str = "FORMATION" if formation_mode else "SNAP"
             ax_main.set_title(f"{current_view} [{mode_str}] | {current_time}", loc='left', fontsize=9)
 
