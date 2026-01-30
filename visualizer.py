@@ -59,7 +59,7 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
                 is_selected = (selected_obj and selected_obj[0]=='hline' and selected_obj[1]==i)
                 ax_main.axhline(val, color=color, linestyle=style, linewidth=2.5 if is_selected else 1.2, zorder=3)
                 # 右端に価格を表示
-                ax_main.text(len(display_df) + 0.2, val, f'{val:.3f}', 
+                ax_main.text(len(display_df) + 0.2, val, f'{val:.5f}', 
                              va='center', fontsize=9, color=color, 
                              bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1))
 
@@ -67,8 +67,8 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
             for val, color, style in stop_lines_data:
                 ax_main.axhline(val, color=color, linestyle=style, linewidth=1.5, zorder=4)
                 # 右端に「SL: 価格」と表示
-                ax_main.text(len(display_df) + 0.2, val, f'SL: {val:.3f}', 
-                             va='bottom', fontsize=9, color=color, fontweight='bold',
+                ax_main.text(len(display_df) + 0.2, val, f': {val:.5f}', 
+                             va='center', fontsize=9, color=color, fontweight='bold',
                              bbox=dict(facecolor='white', alpha=0.8, edgecolor=color, pad=1))
                 
             # --- マーカー（エントリー・決済印）の描画 ---

@@ -496,7 +496,7 @@ current_view = "H1"
 fig = plt.figure(figsize=(15, 8))
 gs = fig.add_gridspec(1, 2, width_ratios=[5, 1], wspace=0.05)
 ax_main, ax_info = fig.add_subplot(gs[0,0]), fig.add_subplot(gs[0,1])
-ax_info = fig.add_subplot(gs[0, 1]) # 情報パネル
+#ax_info = fig.add_subplot(gs[0, 1]) # 情報パネル
 
 fig.canvas.mpl_connect("key_press_event", on_key_press)
 fig.canvas.mpl_connect("key_release_event", lambda e: pressed.discard(e.key))
