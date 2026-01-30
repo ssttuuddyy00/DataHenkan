@@ -8,100 +8,78 @@ import datetime
 import os
 import pandas as pd
 import numpy as np
+from matplotlib.ticker import MultipleLocator
 
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
-from matplotlib.lines import Line2D
-import mplfinance as mpf
-import os
-import pandas as pd
-import numpy as np
-
-def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode):
+def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode):
     try:
         # 1. データの準備
         current_time = df_base.index[idx_base]
         v_price = df_base.iloc[idx_base]["Close"]
-        full_df = dfs[current_view]
+        full_df = DFS[current_view]
         
-        # 2. データの抽出（現在時刻まで）
         plot_df = full_df[full_df.index <= current_time].copy()
         
-        if not plot_df.empty:
-            if formation_mode:
-                last_idx = plot_df.index[-1]
-                plot_df.at[last_idx, "Close"] = v_price
-                m1_segment = df_base.loc[last_idx:current_time]
-                plot_df.at[last_idx, "High"] = m1_segment["High"].max()
-                plot_df.at[last_idx, "Low"] = m1_segment["Low"].min()
+        if not plot_df.empty and formation_mode:
+            last_idx = plot_df.index[-1]
+            plot_df.at[last_idx, "Close"] = v_price
+            m1_segment = df_base.loc[last_idx:current_time]
+            plot_df.at[last_idx, "High"] = m1_segment["High"].max()
+            plot_df.at[last_idx, "Low"] = m1_segment["Low"].min()
 
-        # 3. 描画クリア
+        # 2. 描画エリアの整理
         ax_main.clear()
         ax_info.clear()
-        ax_info.axis("off")
+        # 右側の情報用ボックスを完全に非表示にして、チャートを右端まで広げる
+        ax_info.set_visible(False) 
         
         if not plot_df.empty:
-            # 表示範囲を取得
             display_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
             
-            # --- 【ここがポイント】右側に1本分の「未来の余白」を作る ---
-            # これにより、最新足が「右から2番目」になり、マーカー位置が安定します
+            # --- ローソク足描画 ---
             mpf.plot(display_df, ax=ax_main, type='candle', style='yahoo')
             
-            # --- ここから追加：価格軸と時間軸の見栄え調整 ---
+            # --- 価格軸（右軸）とグリッドの調整 ---
+            # 10pips(0.1)ごとに太い点線、1pips(0.01)ごとに細い点線を引く
+            ax_main.yaxis.set_major_locator(MultipleLocator(0.1)) 
+            ax_main.yaxis.set_minor_locator(MultipleLocator(0.01))
+            ax_main.grid(True, which='major', axis='y', color='gray', linestyle='--', alpha=0.4)
+            ax_main.grid(True, which='minor', axis='y', color='gray', linestyle=':', alpha=0.2)
             
-            # 1. 価格軸（右軸）の調整：5pipsや10pips刻みに設定
-            # 現在の表示範囲の最大・最小価格を取得
-            ymin, ymax = ax_main.get_ylim()
-            # 0.01刻み（10pipsごと）などでグリッドを引きやすくする
-            from matplotlib.ticker import MultipleLocator
-            ax_main.yaxis.set_major_locator(MultipleLocator(0.1)) # 10pips刻みの目盛り
-            ax_main.yaxis.set_minor_locator(MultipleLocator(0.01)) # 1pips刻みの補助目盛り
-            
-            # 2. 時間軸（下軸）の調整：表示本数に合わせて適切な間隔で時刻を表示
-            ax_main.xaxis.set_major_locator(MultipleLocator(max(1, len(display_df)//5)))
-            
-            # 3. グリッド線を表示（ラウンドナンバーを見やすく）
-            ax_main.grid(True, which='major', axis='both', color='gray', linestyle='--', alpha=0.3)
-            ax_main.grid(True, which='minor', axis='y', color='gray', linestyle=':', alpha=0.1)
-            
-            # 時刻ラベルのフォーマットを読みやすく（15:00 等）
-            import matplotlib.dates as mdates
-            # インデックスがDatetimeIndexの場合
+            # --- 時間軸（下軸）の調整 ---
+            # 表示本数に合わせて目盛りの数を自動調整（5〜6個程度表示）
+            step = max(1, len(display_df) // 6)
+            ax_main.xaxis.set_major_locator(MultipleLocator(step))
             labels = [display_df.index[int(i)].strftime('%H:%M') for i in ax_main.get_xticks() if 0 <= i < len(display_df)]
             ax_main.set_xticklabels(labels, fontsize=8)
-            # 横軸の範囲を「データの長さ」より1つ大きく設定する
-            ax_main.set_xlim(-0.5, len(display_df) + 0.5) 
+            
+            # チャート右側に少しだけ余白を作り、最新足を見やすくする
+            ax_main.set_xlim(-0.5, len(display_df) + 1.5) 
 
             # --- 水平線の描画 ---
             for i, (val, color, style) in enumerate(hlines_data):
                 is_selected = (selected_obj and selected_obj[0]=='hline' and selected_obj[1]==i)
-                ax_main.axhline(val, color=color, linestyle=style, linewidth=2.5 if is_selected else 1.0)
+                ax_main.axhline(val, color=color, linestyle=style, linewidth=2.5 if is_selected else 1.2, zorder=3)
 
-            # --- マーカー（エントリー・決済印）の描画 ---
             # --- マーカー（エントリー・決済印）の描画 ---
             for m_time, m_price, m_marker, m_color, m_alpha in markers:
-                # 1. そもそも表示範囲内にあるかチェック
                 if m_time >= display_df.index[0]:
-                    
-                    # 2. 現在の最新足の時刻を取得
                     last_time = display_df.index[-1]
+                    # 最新足以降なら右端に固定
+                    idx_pos = len(display_df)-1 if m_time >= last_time else display_df.index.get_indexer([m_time], method='pad')[0]
                     
-                    # 3. マーカーの時刻が「最新足の開始時刻」と同じ、もしくはそれ以降（形成中）なら
-                    # インデックス番号で「一番右端」を指定する
-                    if m_time >= last_time:
-                        idx_pos = len(display_df) - 1
-                    else:
-                        # 過去の足なら、その位置を探す
-                        idx_pos = display_df.index.get_indexer([m_time], method='pad')[0]
-                    
-                    # 描画（横位置 idx_pos, 縦位置 m_price）
-                    ax_main.scatter(idx_pos, m_price, marker=m_marker, color=m_color, 
-                                    s=200, alpha=m_alpha, zorder=5)
-            # タイトルなど
-            ax_main.set_title(f"{current_view} | {current_time}", loc='left', fontsize=9)
+                    # 見やすくするために縁取りを追加（x以外）
+                    edge = 'white' if m_marker != 'x' else None
+                    ax_main.scatter(idx_pos, m_price, marker=m_marker, color=m_color, s=200, alpha=m_alpha, zorder=5, edgecolors=edge)
+                    # マーカー位置に短い水平ガイド
+                    ax_main.hlines(m_price, idx_pos - 0.5, idx_pos + 0.5, colors=m_color, alpha=0.5, linestyles='--')
 
+            ax_main.set_title(f"{current_view} | {current_time} | Price: {v_price:.3f}", loc='left', fontsize=10)
+
+        # チャート全体をウィンドウいっぱいに広げる（余白調整）
+        fig.tight_layout()
+        fig.subplots_adjust(right=0.93) # 右側の目盛り数字が入るスペースだけ確保
         fig.canvas.draw_idle()
+
     except Exception as e:
         print(f"Redraw Error: {e}")
 def save_trade_screenshot(df, trade_info, current_view, folder_base=r"C:\Users\81803\OneDrive\画像\リプレイ画像"):
