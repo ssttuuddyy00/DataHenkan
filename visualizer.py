@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 from matplotlib.ticker import MultipleLocator
 
+
 def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode):
     try:
         # 1. データの準備
@@ -31,6 +32,18 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
         # 右側の情報用ボックスを完全に非表示にして、チャートを右端まで広げる
         ax_info.set_visible(False) 
         
+   
+
+        # 1. 0.01刻み（1.18, 1.17など）を「主目盛り」に設定
+        ax_main.yaxis.set_major_locator(MultipleLocator(0.01))
+        # 2. 0.002刻みを「補助目盛り」に設定
+        ax_main.yaxis.set_minor_locator(MultipleLocator(0.002))
+
+        # 3. 主目盛りのグリッド（太く、濃く）
+        ax_main.grid(which='major', axis='y', color='gray', linewidth=1.0, alpha=0.5, zorder=0)
+        # 4. 補助目盛りのグリッド（細く、薄く）
+        ax_main.grid(which='minor', axis='y', color='gray', linewidth=0.2, alpha=0.15, zorder=0)
+            
         if not plot_df.empty:
             display_df = plot_df.iloc[-WINDOW_SIZES[current_view]:]
             
