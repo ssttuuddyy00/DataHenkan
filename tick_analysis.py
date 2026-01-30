@@ -1,76 +1,94 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import os
 
-def analyze_tick_data_fast(file_path, tick_window=1000):
-    print(f"読み込み中: {file_path}")
+def analyze_huge_tick_data(input_path, tick_window=1000, chunk_size=1000000):
+    """
+    30GB超のデータを分割読み込みし、メモリ消費を抑えて分析する
+    """
+    print(f"--- 巨大ファイル処理開始 ---")
+    output_path = input_path.replace('.csv', '_analyzed.csv')
     
-    # 1. データの読み込み (必要な列に絞る)
-    df = pd.read_csv(file_path, usecols=['Timestamp', 'Bid', 'Ask'])
-    
-    # 型変換の高速化
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-    df['Price'] = (df['Bid'] + df['Ask']) / 2
-    
-    # 2. 基本指標の事前計算
-    df['Diff'] = df['Price'].diff()
-    df['Direction'] = np.sign(df['Diff']).fillna(0)
-    df['Abs_Diff'] = df['Diff'].abs()
+    # 既存の出力ファイルがあれば削除（追記モードのため）
+    if os.path.exists(output_path):
+        os.remove(output_path)
 
-    # 3. 1000ティックごとのグループID作成
-    groups = np.arange(len(df)) // tick_window
-    grouped = df.groupby(groups)
-    
-    print("集計処理中...")
-    
-    # 4. 集計（4本値と各指標）
-    agg_df = pd.DataFrame()
-    agg_df['StartTime'] = grouped['Timestamp'].first()
-    agg_df['Open'] = grouped['Price'].first()
-    agg_df['High'] = grouped['Price'].max()
-    agg_df['Low'] = grouped['Price'].min()
-    agg_df['Close'] = grouped['Price'].last()
-    
-    # 密度（完成時間）
-    agg_df['Duration_Sec'] = (grouped['Timestamp'].last() - grouped['Timestamp'].first()).dt.total_seconds()
-    
-    # 買いvs売りの数
-    # Direction: 1=買い, -1=売り
-    agg_df['Buy_Count'] = df['Direction'].where(df['Direction'] == 1).groupby(groups).count()
-    agg_df['Sell_Count'] = df['Direction'].where(df['Direction'] == -1).groupby(groups).count()
-    
-    # 一直線度 (Efficiency Ratio)
-    net_move = (agg_df['Close'] - agg_df['Open']).abs()
-    total_path = grouped['Abs_Diff'].sum()
-    agg_df['Efficiency'] = net_move / total_path
-    
-    return agg_df
+    # 1. 100万行ずつ読み込み（chunk表示で進捗を確認）
+    reader = pd.read_csv(
+        input_path, 
+        usecols=['Timestamp', 'Bid', 'Ask'], 
+        dtype={'Bid': np.float32, 'Ask': np.float32},
+        chunksize=chunk_size
+    )
+
+    remaining_data = pd.DataFrame()
+    chunk_count = 0
+
+    for chunk in reader:
+        chunk_count += 1
+        print(f"処理中: {chunk_count * chunk_size / 1000000:.0f} 百万行目...")
+
+        # 前回のループで余ったティックを今回の先頭に結合
+        if not remaining_data.empty:
+            chunk = pd.concat([remaining_data, chunk])
+
+        # 今回のチャンクで「1000ティック」で割り切れる分だけ計算
+        n = len(chunk)
+        num_bars = n // tick_window
+        
+        if num_bars == 0:
+            remaining_data = chunk
+            continue
+            
+        # 割り切れる分と、次回のループに回す余り（1000未満）に分ける
+        calc_size = num_bars * tick_window
+        current_data = chunk.iloc[:calc_size]
+        remaining_data = chunk.iloc[calc_size:]
+
+        # --- NumPyによる高速計算 ---
+        prices = ((current_data['Bid'] + current_data['Ask']) / 2).values
+        times = pd.to_datetime(current_data['Timestamp']).values
+        
+        # 行列化 [足の数, 1000]
+        prices_matrix = prices.reshape(-1, tick_window)
+        times_matrix = times.reshape(-1, tick_window)
+
+        # 指標計算
+        opens = prices_matrix[:, 0]
+        closes = prices_matrix[:, -1]
+        
+        # 一直線度 (Efficiency)
+        net_move = np.abs(closes - opens)
+        total_path = np.sum(np.abs(np.diff(prices_matrix, axis=1)), axis=1)
+        efficiency = np.divide(net_move, total_path, out=np.zeros_like(net_move), where=total_path!=0)
+
+        # 密度 (Duration)
+        durations = (times_matrix[:, -1] - times_matrix[:, 0]).astype('timedelta64[s]').astype(np.int32)
+
+        # 結果をデータフレーム化
+        res_chunk = pd.DataFrame({
+            'StartTime': times_matrix[:, 0],
+            'Open': opens,
+            'High': np.max(prices_matrix, axis=1),
+            'Low': np.min(prices_matrix, axis=1),
+            'Close': closes,
+            'Duration_Sec': durations,
+            'Efficiency': efficiency
+        })
+
+        # 2. 結果をCSVに「追記」していく
+        res_chunk.to_csv(output_path, mode='a', index=False, header=not os.path.exists(output_path))
+
+    print(f"\n✅ すべての処理が完了しました！")
+    print(f"出力ファイル: {output_path}")
 
 # ==========================================
-# 設定エリア：ここを書き換えてください
+# 設定エリア
 # ==========================================
-# Windowsの人は r'C:\Users\Name\Desktop\EURUSD.csv' のように書く
-FILE_PATH = 'ここにファイルのパスを入力してください.csv' 
-TICK_NUM = 1000 # 何ティックごとに足をまとめるか
+INPUT_PATH = r'C:/Users/81803/OneDrive/ドキュメント/EURUSD_tick_2004_2025.csv'
 
-# --- 実行 ---
 if __name__ == "__main__":
     try:
-        # 分析実行
-        res = analyze_tick_data_fast(FILE_PATH, TICK_NUM)
-        
-        # 結果の表示
-        print("\n--- 分析完了 ---")
-        print(res.head(10)) # 最初の10行を表示
-        
-        # 面白いデータの抽出例：一直線度が0.8以上の「本気トレンド」足
-        super_trends = res[res['Efficiency'] > 0.8]
-        print(f"\n一直線度が高い足の数: {len(super_trends)}")
-        
-        # CSVに保存する場合
-        # res.to_csv('tick_analysis_result.csv')
-        
-    except FileNotFoundError:
-        print("エラー: ファイルが見つかりません。パスが正しいか確認してください。")
+        analyze_huge_tick_data(INPUT_PATH, tick_window=1000, chunk_size=2000000)
     except Exception as e:
-        print(f"エラーが発生しました: {e}")
+        print(f"❌ エラー: {e}")

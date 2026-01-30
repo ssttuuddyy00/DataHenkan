@@ -81,6 +81,11 @@ class StartupSettings:
 # =========================
 def on_key_press(e):
     global idx_base, is_autoplay, current_view, fibo_mode, fibo_points, selected_obj, trade, balance, history, markers , formation_mode 
+    global pressed
+    # デバッグ用：何のキーが押されたかコンソールに表示
+    # print(f"Key Pressed: {e.key}") 
+    pressed.add(e.key.lower()) # 全て小文字で保存して判定を安定させる
+    
     pressed.add(e.key)
     step = 10 if "control" in pressed else 1
     # --- 1. 移動量の計算 ---
@@ -116,7 +121,7 @@ def on_key_press(e):
         visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
                          hlines_data, stop_lines_data, markers, history, balance, 
                          is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                         retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                         retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
                          fibo_mode, fibo_points, selected_obj, formation_mode)
         return
 
@@ -136,7 +141,7 @@ def on_key_press(e):
         visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
                          hlines_data, stop_lines_data, markers, history, balance, 
                          is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                         retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                         retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
                          fibo_mode, fibo_points, selected_obj, formation_mode)
         return
  
@@ -149,10 +154,9 @@ def on_key_press(e):
 
     
     if e.key == "a": is_autoplay = not is_autoplay
-    # 時間足切り替え（追加）
    
     elif e.key == " ": execute_skip()
-    elif e.key == "f": # リトレースメント開始
+    elif e.key == "j": # リトレースメント開始
         fibo_mode, fibo_points = "RETRACE", []
         print(">> フィボナッチ・リトレースメント: 2点クリックしてください")
     elif e.key == "e": # エクステンション開始
@@ -172,8 +176,7 @@ def on_key_press(e):
                         idx_base += 1
                         if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
                             # ★ ここに画像保存を追加！ ★
-                            if history[-1]['profit'] < 0:
-                                visualizer.save_trade_screenshot(
+                            visualizer.save_trade_screenshot(
     df_base, 
     history[-1], 
     current_view, 
@@ -184,7 +187,7 @@ def on_key_press(e):
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
@@ -194,7 +197,7 @@ def on_key_press(e):
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
@@ -207,9 +210,6 @@ def on_key_press(e):
         selected_obj = None
   
     # 1〜6の数字キー判定を確実に
-   # 1〜6の数字キー判定
-    # --- 修正箇所：数字キー判定の中 ---
-    # 1〜6の数字キー判定
     if e.key in ["1", "2", "3", "4", "5", "6"]:
         # 1. ここで new_view を定義（これが漏れると NameError）
         new_view = VIEW_MAP[e.key]
@@ -240,39 +240,55 @@ def on_key_press(e):
             ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
             hlines_data, stop_lines_data, markers, history, balance, 
             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-            retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+            retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
             fibo_mode, fibo_points, selected_obj,
             formation_mode
         )
         return  # ここで終わらせないと、下の共通のredrawでまた NameError が出る可能性があります
 
 def on_motion(e):
-    global dragging, selected_obj, fixed_ylim
-    if dragging and selected_obj and e.ydata and e.inaxes:
-        # ドラッグ中は記憶した範囲を強制適用して画面の揺れを防ぐ
+    global dragging, selected_obj, fixed_ylim, hlines_data, stop_lines_data
+    
+    # マウスがチャート内にあり、かつドラッグ中のオブジェクトがある場合
+    if dragging and selected_obj and e.ydata is not None and e.inaxes:
+        # 1. 軸の範囲を固定（ガタつき防止）
         e.inaxes.set_ylim(fixed_ylim)
-        target_list = hlines_data if selected_obj[0] == 'hline' else stop_lines_data
-        target_list[selected_obj[1]][0] = e.ydata
-        # --- 修正箇所：fig.canvas.mpl_connect("motion_notify_event", ...) ---
-        # 以下の部分の末尾に formation_mode を追加
+        
+        # 2. 選択中のラインの価格を更新
+        obj_type, idx = selected_obj
+        if obj_type == 'hline':
+            hlines_data[idx][0] = e.ydata
+        elif obj_type == 'stop':
+            stop_lines_data[idx][0] = e.ydata
+            
+        # 3. 再描画を実行
         visualizer.redraw(
             ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
             hlines_data, stop_lines_data, markers, history, balance, 
             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-            retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+            retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
             fibo_mode, fibo_points, selected_obj,
-            formation_mode # ← 追加
+            formation_mode # 忘れずに追加
         )
 def on_button_press(e):
-    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance, lot_mode, fixed_lot_size   
+    # 修正：retracements と extensions を global に追加
+    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, \
+           trade, balance, lot_mode, fixed_lot_size, hlines_data, \
+           stop_lines_data, retracements, extensions # ←ここに追加
+    
     if not e.inaxes or e.xdata is None: return
-    fixed_ylim = e.inaxes.get_ylim()
-    cp, ct = df_base.iloc[idx_base]["Close"], df_base.index[idx_base]    
+    
     # フィボナッチ打点
     if fibo_mode:
-        fibo_points.append(e.ydata)
+        # 価格(y)と位置(x)をセットで保存することを推奨
+        fibo_points.append(e.ydata) 
+        print(f"Point {len(fibo_points)} captured at {e.ydata:.3f}")
+
         if fibo_mode == "RETRACE" and len(fibo_points) == 2:
-            retracements.append({'p1': fibo_points[0], 'p2': fibo_points[1]}); fibo_mode, fibo_points = None, []
+            # 2点揃ったらリストを更新
+            retracements.append({'p1': fibo_points[0], 'p2': fibo_points[1]})
+            print("Retracement defined!")
+            fibo_mode, fibo_points = None, []
         elif fibo_mode == "EXT" and len(fibo_points) == 3:
             # ここ！ extensions.appen になっていたのを append に修正
             extensions.append({'p1': fibo_points[0], 'p2': fibo_points[1], 'p3': fibo_points[2]})
@@ -281,7 +297,7 @@ def on_button_press(e):
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
@@ -304,15 +320,62 @@ def on_button_press(e):
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 ); return
 
     # 新規ライン描画（HキーやShiftキー時）
+    if not e.inaxes or e.xdata is None or e.ydata is None:
+        return
+
+    # --- デバッグ用：クリック時の状態を確認 ---
+    # print(f"Click: Button={e.button}, Keys={pressed}")
+
+    # 左クリック(1)の時の処理
+    if e.button == 1:
+        # Hキーが押されている場合
+        if "h" in pressed:
+            hlines_data.append([e.ydata, "blue", "-"])
+            print(f">> 水平線を追加: {e.ydata:.5f}")
+            # 強制描画
+            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                             hlines_data, stop_lines_data, markers, history, balance, 
+                             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                             retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                             fibo_mode, fibo_points, selected_obj, formation_mode)
+            return # ラインを引いたら他の判定（エントリーなど）をさせない
+
+        # Shiftキー（Matplotlibでは 'shift'）が押されている場合
+        elif "shift" in pressed:
+            stop_lines_data.clear()
+            stop_lines_data.append([e.ydata, "red", "--"])
+            print(f">> 損切りラインを設定: {e.ydata:.5f}")
+            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                             hlines_data, stop_lines_data, markers, history, balance, 
+                             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                             retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                             fibo_mode, fibo_points, selected_obj, formation_mode)
+            return
+        
     if e.button == 1:
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
         entry_lot = max(0.01, round(RISK_PER_TRADE / (abs(curr_p - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode == "AUTO" and sl_p else (fixed_lot_size if lot_mode == "FIX" else 0.1)
+
+        # エントリー・決済価格の決定ロジック
+        if formation_mode:
+            # 【FORMATIONモード】
+            # 現在動いているM1のCloseを「現在のリアルタイム価格」として採用
+            curr_p = df_base.iloc[idx_base]["Close"]
+            curr_t = df_base.index[idx_base]
+        else:
+            # 【SNAPモード】
+            # current_view（H1やD1など）の「確定した足」の終値を採用
+            # dfs[current_view] から、現在時刻以下の最新の確定足を取得
+            view_df = DFS[current_view]
+            valid_view_df = view_df[view_df.index <= df_base.index[idx_base]]
+            curr_p = valid_view_df.iloc[-1]["Close"]
+            curr_t = valid_view_df.index[-1]
 
         if "b" in pressed or "v" in pressed:
             side = "BUY" if "b" in pressed else "SELL"
@@ -323,28 +386,31 @@ def on_button_press(e):
             profit = round(pips * ONE_LOT_PIPS_VALUE * trade["lot"], 0)
             history.append({**trade, "exit_p": curr_p, "exit_time": curr_t, "pips": pips, "profit": profit})
             # ★ ここに画像保存を追加！ ★
-            if profit < 0: # 負けトレードなら
-                visualizer.save_trade_screenshot(
+            visualizer.save_trade_screenshot(
     df_base, 
     history[-1], 
     current_view, 
     folder_base=config.RESULT_SAVE_DIR  # configから渡す
 )
             balance += profit; markers.append((curr_t, curr_p, "x", "black", 0.3)); trade = None; stop_lines_data.clear()
-        elif "h" in pressed: hlines_data.append([e.ydata, "blue", "-"])
-        elif "shift" in pressed: stop_lines_data.clear(); stop_lines_data.append([e.ydata, "red", "--"])
+        
         visualizer.redraw(
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
 def on_button_release(e):
     global dragging, fixed_ylim
+    global pressed
     dragging = False
     fixed_ylim = None # 解放
+    if e.key.lower() in pressed:
+        pressed.discard(e.key.lower())
+
+    fig.canvas.mpl_connect("key_release_event", on_key_release)
 def execute_skip():
     global idx_base, is_autoplay
     is_autoplay = False
@@ -353,8 +419,7 @@ def execute_skip():
         idx_base += 1
         if engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers): 
             # ★ ここに画像保存を追加！ ★
-            if history[-1]['profit'] < 0:
-                visualizer.save_trade_screenshot(
+            visualizer.save_trade_screenshot(
     df_base, 
     history[-1], 
     current_view, 
@@ -367,7 +432,7 @@ def execute_skip():
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
@@ -431,19 +496,12 @@ current_view = "H1"
 fig = plt.figure(figsize=(15, 8))
 gs = fig.add_gridspec(1, 2, width_ratios=[5, 1], wspace=0.05)
 ax_main, ax_info = fig.add_subplot(gs[0,0]), fig.add_subplot(gs[0,1])
-ax_info = fig.add_subplot(gs[0, 1]) # 情報パネル
+#ax_info = fig.add_subplot(gs[0, 1]) # 情報パネル
 
 fig.canvas.mpl_connect("key_press_event", on_key_press)
 fig.canvas.mpl_connect("key_release_event", lambda e: pressed.discard(e.key))
 fig.canvas.mpl_connect("button_press_event", on_button_press)
-fig.canvas.mpl_connect("motion_notify_event", lambda e: (dragging and selected_obj and e.ydata and (globals().update(dragging=True) or ((hlines_data[selected_obj[1]] if selected_obj[0]=='hline' else stop_lines_data[selected_obj[1]]).__setitem__(0, e.ydata)) or visualizer.redraw(
-    ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-    hlines_data, stop_lines_data, markers, history, balance, 
-    is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-    fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
-))))
+fig.canvas.mpl_connect("motion_notify_event", on_motion)
 fig.canvas.mpl_connect("button_release_event", lambda e: globals().update(dragging=False))
 fig.canvas.mpl_connect("close_event", on_close)
 
@@ -452,7 +510,7 @@ timer.add_callback(lambda: (idx_base < len(df_base)-1 and is_autoplay and (globa
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 ))))
@@ -462,7 +520,7 @@ visualizer.redraw(
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-    retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+    retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
