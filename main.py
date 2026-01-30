@@ -81,6 +81,11 @@ class StartupSettings:
 # =========================
 def on_key_press(e):
     global idx_base, is_autoplay, current_view, fibo_mode, fibo_points, selected_obj, trade, balance, history, markers , formation_mode 
+    global pressed
+    # デバッグ用：何のキーが押されたかコンソールに表示
+    # print(f"Key Pressed: {e.key}") 
+    pressed.add(e.key.lower()) # 全て小文字で保存して判定を安定させる
+    
     pressed.add(e.key)
     step = 10 if "control" in pressed else 1
     # --- 1. 移動量の計算 ---
@@ -271,7 +276,7 @@ def on_motion(e):
             formation_mode # 忘れずに追加
         )
 def on_button_press(e):
-    global dragging, selected_obj, fixed_ylim, fibo_points, fibo_mode, trade, balance, lot_mode, fixed_lot_size   
+    global hlines_data, stop_lines_data, dragging, selected_obj, fixed_ylim    
     if not e.inaxes or e.xdata is None: return
     fixed_ylim = e.inaxes.get_ylim()
     cp, ct = df_base.iloc[idx_base]["Close"], df_base.index[idx_base]    
@@ -317,6 +322,38 @@ def on_button_press(e):
 ); return
 
     # 新規ライン描画（HキーやShiftキー時）
+    if not e.inaxes or e.xdata is None or e.ydata is None:
+        return
+
+    # --- デバッグ用：クリック時の状態を確認 ---
+    # print(f"Click: Button={e.button}, Keys={pressed}")
+
+    # 左クリック(1)の時の処理
+    if e.button == 1:
+        # Hキーが押されている場合
+        if "h" in pressed:
+            hlines_data.append([e.ydata, "blue", "-"])
+            print(f">> 水平線を追加: {e.ydata:.5f}")
+            # 強制描画
+            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                             hlines_data, stop_lines_data, markers, history, balance, 
+                             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                             retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                             fibo_mode, fibo_points, selected_obj, formation_mode)
+            return # ラインを引いたら他の判定（エントリーなど）をさせない
+
+        # Shiftキー（Matplotlibでは 'shift'）が押されている場合
+        elif "shift" in pressed:
+            stop_lines_data.clear()
+            stop_lines_data.append([e.ydata, "red", "--"])
+            print(f">> 損切りラインを設定: {e.ydata:.5f}")
+            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                             hlines_data, stop_lines_data, markers, history, balance, 
+                             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                             retracements, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
+                             fibo_mode, fibo_points, selected_obj, formation_mode)
+            return
+        
     if e.button == 1:
         sl_p = stop_lines_data[0][0] if stop_lines_data else 0
         entry_lot = max(0.01, round(RISK_PER_TRADE / (abs(curr_p - sl_p)/PIPS_UNIT * ONE_LOT_PIPS_VALUE), 2)) if lot_mode == "AUTO" and sl_p else (fixed_lot_size if lot_mode == "FIX" else 0.1)
@@ -338,8 +375,7 @@ def on_button_press(e):
     folder_base=config.RESULT_SAVE_DIR  # configから渡す
 )
             balance += profit; markers.append((curr_t, curr_p, "x", "black", 0.3)); trade = None; stop_lines_data.clear()
-        elif "h" in pressed: hlines_data.append([e.ydata, "blue", "-"])
-        elif "shift" in pressed: stop_lines_data.clear(); stop_lines_data.append([e.ydata, "red", "--"])
+        
         visualizer.redraw(
     ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
     hlines_data, stop_lines_data, markers, history, balance, 
@@ -350,8 +386,13 @@ def on_button_press(e):
 )
 def on_button_release(e):
     global dragging, fixed_ylim
+    global pressed
     dragging = False
     fixed_ylim = None # 解放
+    if e.key.lower() in pressed:
+        pressed.discard(e.key.lower())
+
+    fig.canvas.mpl_connect("key_release_event", on_key_release)
 def execute_skip():
     global idx_base, is_autoplay
     is_autoplay = False
