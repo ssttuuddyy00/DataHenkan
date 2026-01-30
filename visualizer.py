@@ -72,7 +72,31 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
                     ax_main.scatter(idx_pos, m_price, marker=m_marker, color=m_color, s=200, alpha=m_alpha, zorder=5, edgecolors=edge)
                     # マーカー位置に短い水平ガイド
                     ax_main.hlines(m_price, idx_pos - 0.5, idx_pos + 0.5, colors=m_color, alpha=0.5, linestyles='--')
-
+            # --- フィボナッチ・リトレースメントの描画 ---
+            for rect_data in retracements:
+                # rect_data が {p1: (time, price), p2: (time, price)} の形式だと仮定
+                p1_time, p1_price = rect_data['p1']
+                p2_time, p2_price = rect_data['p2']
+                
+                # 表示範囲内のインデックスを取得
+                if p1_time in display_df.index and p2_time in display_df.index:
+                    idx1 = display_df.index.get_loc(p1_time)
+                    idx2 = display_df.index.get_loc(p2_time)
+                    
+                    # 矩形（背景色）の描画
+                    width = idx2 - idx1
+                    height = p2_price - p1_price
+                    rect = Rectangle((idx1, p1_price), width, height, 
+                                     color='orange', alpha=0.2, zorder=1)
+                    ax_main.add_patch(rect)
+                    
+                    # 0%, 23.6%, 38.2%, 50%, 61.8%, 100% のライン
+                    diff = p1_price - p2_price
+                    levels = [0, 0.236, 0.382, 0.5, 0.618, 1.0]
+                    for lv in levels:
+                        lv_price = p2_price + diff * lv
+                        ax_main.hlines(lv_price, idx1, idx2 + 5, colors='orange', 
+                                       linestyles='--', alpha=0.5, linewidth=0.8)
             ax_main.set_title(f"{current_view} | {current_time} | Price: {v_price:.3f}", loc='left', fontsize=10)
 
         # チャート全体をウィンドウいっぱいに広げる（余白調整）
