@@ -76,31 +76,27 @@ def redraw(ax_main, ax_info, fig, dfs, df_base, idx_base, current_view, hlines_d
 
 # (以下、save_trade_screenshot などの他の関数はそのまま)
 def save_trade_screenshot(df, trade_info, current_view, folder_base=r"C:\Users\81803\OneDrive\画像\リプレイ画像"):
-    # 1. 勝ち負けでフォルダを分ける
+    # 1. 勝ち負けでサブフォルダを決定 (HTMLレポートが機能するために重要)
     sub_folder = "win" if trade_info['profit'] >= 0 else "loss"
     target_dir = os.path.join(folder_base, sub_folder)
     
-    # フォルダがなければ作成
+    # 親フォルダとサブフォルダを再帰的に作成
     if not os.path.exists(target_dir): 
         os.makedirs(target_dir, exist_ok=True)
     
-    # 2. 描画範囲を「エントリーと決済が見える」ように絞る
-    # これにより "WARNING: TOO MUCH DATA" を回避し、ローソク足を太く見やすくします
     try:
+        # 2. 描画範囲の絞り込み
         entry_idx = df.index.get_indexer([trade_info['time']], method='pad')[0]
         exit_idx = df.index.get_indexer([trade_info['exit_time']], method='pad')[0]
         
-        # 前後に少し余裕を持たせる (前後30本ずつ)
         start_idx = max(0, entry_idx - 30)
         end_idx = min(len(df) - 1, exit_idx + 30)
-        subset = df.iloc[start_idx:end_idx]
+        subset = df.iloc[start_idx:end_idx].copy()
         
-        # 3. チャート上に印（矢印と×）を付けるための設定
-        # 全データ分 NaN で埋めたリストを作り、特定のインデックスだけ価格を入れる
+        # 3. マーカー設定
         entry_markers = [np.nan] * len(subset)
         exit_markers = [np.nan] * len(subset)
         
-        # subset内での相対的な位置を計算
         entry_pos = entry_idx - start_idx
         exit_pos = exit_idx - start_idx
         
@@ -108,19 +104,18 @@ def save_trade_screenshot(df, trade_info, current_view, folder_base=r"C:\Users\8
         exit_markers[exit_pos] = trade_info['exit_p']
 
         apds = [
-            # エントリー：青の上矢印（BUY）または赤の下矢印（SELL）
             mpf.make_addplot(entry_markers, type='scatter', markersize=200, 
                              marker='^' if trade_info['side']=='BUY' else 'v',
                              color='blue' if trade_info['side']=='BUY' else 'red'),
-            # 決済：黒の×印
             mpf.make_addplot(exit_markers, type='scatter', markersize=200, 
                              marker='x', color='black')
         ]
 
-        # 4. 保存
+        # 4. ファイル名の生成
         time_str = trade_info['exit_time'].strftime("%Y%m%d_%H%M%S")
-        filename = f"{target_dir}/{time_str}_{current_view}_{trade_info['pips']}pips.png"
+        filename = os.path.join(target_dir, f"{time_str}_{current_view}_{trade_info['pips']}pips.png")
         
+        # 5. 保存実行
         mpf.plot(subset, type='candle', style='yahoo', addplot=apds,
                  title=f"Result: {trade_info['pips']} pips ({current_view})",
                  savefig=filename, warn_too_much_data=1000)
@@ -129,60 +124,6 @@ def save_trade_screenshot(df, trade_info, current_view, folder_base=r"C:\Users\8
 
     except Exception as e:
         print(f"画像保存中にエラーが発生しました: {e}")
-    # 1. 勝ち負けでフォルダを分ける
-    sub_folder = "win" if trade_info['profit'] >= 0 else "loss"
-    target_dir = os.path.join(folder_base, sub_folder)
-    if not os.path.exists(folder_base): 
-        os.makedirs(folder_base)
-    
-    # 2. 描画範囲の決定 (エントリーから決済までが見えるように)
-    entry_idx = df.index.get_indexer([trade_info['time']], method='pad')[0]
-    exit_idx = df.index.get_indexer([trade_info['exit_time']], method='pad')[0]
-    
-    start_idx = max(0, entry_idx - 30) # エントリーの30本前から
-    end_idx = min(len(df) - 1, exit_idx + 30) # 決済の30本後まで
-    subset = df.iloc[start_idx:end_idx]
-    
-    # 3. エントリーと決済を画像内にマークする (追加描画の設定)
-    # エントリー点と決済点に印をつけるためのリスト
-    apds = [
-        # エントリー地点に青(Buy)または赤(Sell)の矢印
-        mpf.make_addplot([trade_info['price'] if i == entry_idx else np.nan for i in range(start_idx, end_idx)],
-                         type='scatter', markersize=200, marker='^' if trade_info['side']=='BUY' else 'v',
-                         color='blue' if trade_info['side']=='BUY' else 'red'),
-        # 決済地点に黒の×印
-        mpf.make_addplot([trade_info['exit_p'] if i == exit_idx else np.nan for i in range(start_idx, end_idx)],
-                         type='scatter', markersize=200, marker='x', color='black')
-    ]
-
-    # 4. ファイル名とタイトル (時間足を入れる)
-    time_str = trade_info['exit_time'].strftime("%Y%m%d_%H%M%S")
-    filename = f"{target_dir}/{time_str}_{current_view}_{trade_info['pips']}pips.png"
-    chart_title = f"Result: {trade_info['pips']} pips ({trade_info['side']} on {current_view})"
-    
-    # 5. 描画
-    mpf.plot(subset, type='candle', style='yahoo', 
-             addplot=apds,
-             title=chart_title,
-             savefig=filename, 
-             warn_too_much_data=1000)
-    
-    print(f"画像保存完了 [{sub_folder}]: {filename}")
-    if not os.path.exists(folder): os.makedirs(folder)
-    
-    # トレードの前後を表示範囲にする
-    start = max(0, df.index.get_loc(trade_info['time']) - 30)
-    end = min(len(df)-1, df.index.get_loc(trade_info['exit_time']) + 30)
-    subset = df.iloc[start:end]
-    
-    # idの代わりに決済時刻(exit_time)をファイル名に使う
-    # 時刻の「:」などはファイル名に使えないので、strftimeで数字だけに変換します
-    time_str = trade_info['exit_time'].strftime("%Y%m%d_%H%M%S")
-    filename = f"{folder}/{time_str}_{trade_info['side']}_{trade_info['pips']}pips.png"
-    # 描画して保存（mpfを使うと楽です）
-    mpf.plot(subset, type='candle', style='yahoo', savefig=filename)
-    print(f"画像保存完了: {filename}")
-
 def generate_report(folder_base="trade_results"):
     report_path = os.path.join(folder_base, "report.html")
     
