@@ -2,8 +2,8 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-csv_file = "your_tick_data.csv"
-parquet_file = "tick_data.parquet"
+csv_file = r"C:\Users\81803\OneDrive\ドキュメント\EURUSD_tick_2004_2025.csv"
+parquet_file = r"C:\Users\81803\OneDrive\ドキュメント\tick_data.parquet"
 chunk_size = 500000  # 50万行ずつ処理（メモリに合わせて調整）
 
 print("変換を開始します...")

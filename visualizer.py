@@ -95,29 +95,40 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
             labels = [display_df.index[int(i)].strftime('%H:%M') for i in ticks]
             ax_main.set_xticklabels(labels, fontsize=8) # その後にラベルを貼る
             
-            # 1. リトレースメント
-            for f in retracements:
+            # --- カラーパレットの設定 ---
+            # 複数引いたときに被らないように色のリストを用意
+            fib_colors = ['orange', 'cyan', 'magenta', 'lime', 'yellow', 'white']
+
+            # 1. リトレースメント描画
+            for i, f in enumerate(retracements):
+                # リストの範囲を超えないように index を調整 (余り計算 %)
+                color = fib_colors[i % len(fib_colors)]
+                
                 p1, p2 = f['p1'], f['p2']
                 diff = p1 - p2
                 levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0]
+                
                 for lv in levels:
                     lv_p = p2 + diff * lv
-                    ax_main.axhline(lv_p, color='orange', linestyle='--', alpha=0.6, linewidth=0.8)
-                    # 右端にラベルを表示 (x座標は表示データ本数 + 0.5)
+                    ax_main.axhline(lv_p, color=color, linestyle='--', alpha=0.6, linewidth=0.8)
+                    # ラベルも同じ色にする
                     ax_main.text(len(display_df) + 0.5, lv_p, f'{lv*100:.1f}%', 
-                                 va='center', fontsize=8, color='orange', fontweight='bold')
+                                va='center', fontsize=8, color=color, fontweight='bold')
 
-            # 2. エクステンション
-            for e_f in extensions:
+            # 2. エクステンション描画
+            for i, e_f in enumerate(extensions):
+                # リトレースメントと色が被らないように少しずらす、または別の色群を使う
+                color = fib_colors[(i + 2) % len(fib_colors)] 
+                
                 ep1, ep2, ep3 = e_f['p1'], e_f['p2'], e_f['p3']
                 exp_diff = ep2 - ep1
                 exp_levels = [0, 0.618, 1.0, 1.618, 2.618]
+                
                 for lv in exp_levels:
                     lv_p = ep3 + exp_diff * lv
-                    ax_main.axhline(lv_p, color='cyan', linestyle='-.', alpha=0.6, linewidth=0.8)
-                    # 右端にラベルを表示
+                    ax_main.axhline(lv_p, color=color, linestyle='-.', alpha=0.6, linewidth=0.8)
                     ax_main.text(len(display_df) + 0.5, lv_p, f'Exp {lv*100:.1f}%', 
-                                 va='center', fontsize=8, color='cyan', fontweight='bold')
+                                va='center', fontsize=8, color=color, fontweight='bold')
             # --- 仕上げ（tight_layoutの警告対策） ---
             # tight_layout() は使わず、手動で余白を調整
             fig.subplots_adjust(left=0.07, right=0.93, bottom=0.1, top=0.95)
