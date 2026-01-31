@@ -555,6 +555,11 @@ fibo_mode, fibo_points = None, []
 retracements, extensions = [], []
 is_autoplay = False
 autoplay_speed = 0.5
+# ★ ここを追加！ ★
+v_price = None           # 垂直線の位置（価格）用
+current_tick_price = None # 現在のTick価格
+tick_segment = None      # 読み込んだTickデータの塊
+formation_mode = False   # 最初はFalseにしておく
 # ------------------
 
 # 価格単位の判定（これもdata_managerに移してもいいですが、一旦ここに）
