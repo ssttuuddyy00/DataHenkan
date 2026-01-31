@@ -13,7 +13,7 @@ import pandas as pd # StartupSettings内でpd.Timestampを使うため必要
 # =========================
 # --- main.py ---
 # 追加
-formation_mode = True  # True: 1分足で形成、False: その時間足単位でジャンプ
+formation_mode = False  # True: 1分足で形成、False: その時間足単位でジャンプ
 
 class StartupSettings:
     def __init__(self, initial_dt):
