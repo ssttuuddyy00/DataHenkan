@@ -153,6 +153,17 @@ def on_key_press(e):
         mode_text = "形成表示モード" if formation_mode else "確定ジャンプモード"
         print(f">> モード変更: {mode_text}")
 
+    # --- on_key_press 内 ---
+    if e.key == "w":
+        if current_view == "M1":
+            print(">> Tickデータをロード中...")
+            current_dt = df_base.index[idx_base]
+            formation_ticks = load_ticks_for_formation(current_dt)
+            tick_ptr = 0 # 再生位置リセット
+            if formation_ticks is not None:
+                print(f">> {len(formation_ticks)}件のTickをロードしました。形成開始！")
+        else:
+            print(">> Tick形成は1分足表示時のみ有効です")
     
     if e.key == "a": is_autoplay = not is_autoplay
    
@@ -437,6 +448,27 @@ def execute_skip():
     fibo_mode, fibo_points, selected_obj,
     formation_mode # ← これを追加
 )
+
+
+# Formation用のTickデータを保持するグローバル変数
+formation_ticks = None 
+tick_ptr = 0 # 今何番目のTickを再生しているか
+
+def load_ticks_for_formation(current_time):
+    """最新足から5本分(5分間)のTickを読み込む"""
+    start_t = current_time - pd.Timedelta(minutes=5)
+    end_t = current_time + pd.Timedelta(minutes=1) # 現在の足の終わりまで
+    
+    try:
+        # Parquetからフィルタリングしてロード
+        df = pd.read_parquet(
+            "tick_data.parquet", 
+            filters=[("Datetime", ">=", start_t), ("Datetime", "<=", end_t)]
+        )
+        return df
+    except Exception as e:
+        print(f"Tick読み込み失敗: {e}")
+        return None
     
 
 def on_close(event):
