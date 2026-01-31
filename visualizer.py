@@ -24,15 +24,32 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
             
             # 【新機能】Tickデータが届いている場合
             if current_tick_price is not None:
+                # 1. まずOpenが空（NaN）なら、現在の価格で埋める（エラー防止の最優先事項）
+                if pd.isna(plot_df.at[last_idx, "Open"]):
+                    plot_df.at[last_idx, "Open"] = current_tick_price
+                
+                # 2. 終値を更新
                 plot_df.at[last_idx, "Close"] = current_tick_price
-                if tick_segment is not None:
-                    plot_df.at[last_idx, "High"] = tick_segment["Price"].max()
-                    plot_df.at[last_idx, "Low"] = tick_segment["Price"].min()
+                
+                # 3. 高値・安値を計算（tick_segmentがある場合）
+                if tick_segment is not None and not tick_segment.empty:
+                    # この足の開始(Open)と、これまでのTickの最大・最小を比較する
+                    t_max = tick_segment["Price"].max()
+                    t_min = tick_segment["Price"].min()
+                    plot_df.at[last_idx, "High"] = max(plot_df.at[last_idx, "Open"], t_max)
+                    plot_df.at[last_idx, "Low"] = min(plot_df.at[last_idx, "Open"], t_min)
+                else:
+                    # データがない瞬間はOpenと同じ値をセットしてエラーを防ぐ
+                    plot_df.at[last_idx, "High"] = plot_df.at[last_idx, "Open"]
+                    plot_df.at[last_idx, "Low"] = plot_df.at[last_idx, "Open"]
             
             # 【既存機能】これまでの1分足ベースの処理（Tickがない時はこっちが動く）
             else:
+                # ここでもOpenがNaNでないことを保証する
+                if pd.isna(plot_df.at[last_idx, "Open"]):
+                     plot_df.at[last_idx, "Open"] = v_price if v_price is not None else plot_df.iloc[-2]["Close"]
+
                 plot_df.at[last_idx, "Close"] = v_price
-                # あなたが持っていた既存のロジック
                 m1_segment = df_base.loc[last_idx:current_time]
                 plot_df.at[last_idx, "High"] = m1_segment["High"].max()
                 plot_df.at[last_idx, "Low"] = m1_segment["Low"].min()
