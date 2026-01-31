@@ -111,10 +111,11 @@ def on_key_press(e):
     if e.key == "right":
         # --- A. Formationモード (Tick単位の処理) ---
         if formation_mode:
+            global tick_ptr
             if current_view == "M1":
                 # データが存在するかチェック
                 if formation_ticks  is not None and tick_ptr < len(formation_ticks):
-                    global tick_ptr
+
                     
                     # 1. 現在のTickデータを抽出
                     tick_row = formation_ticks.iloc[tick_ptr]
