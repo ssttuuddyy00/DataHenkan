@@ -108,9 +108,20 @@ def on_key_press(e):
     # --- 右移動 (進む) ---
     if e.key == "right":
         if formation_mode:
-            # 形成モード: 1分足のインデックスを1つ進める
+            # 1. 1分足のインデックスを進める（ここは今まで通り）
             step = 1 if not "control" in pressed else 10
             idx_base = min(len(df_base) - 1, idx_base + step)
+            
+            # 2. 進めた先の「1分足の終値」をバケツに入れる
+            current_close = df_base.iloc[idx_base]["Close"]
+            
+            # 3. redrawを呼ぶ（v_priceに値を渡す！）
+            visualizer.redraw(
+                ..., # 他の引数
+                v_price=current_close,       # ★ここ！
+                current_tick_price=None,     # TickではないのでNone
+                tick_segment=None            # TickではないのでNone
+            )
         else:
             # ジャンプモード: 現在の表示足の「次の行」へジャンプ
             current_row_idx = full_df.index.searchsorted(current_dt, side='right')
