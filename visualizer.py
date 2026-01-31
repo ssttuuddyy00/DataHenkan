@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib.ticker import MultipleLocator
 
 
-def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode):
+def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode,v_price=None, current_tick_price=None, tick_segment=None):
     try:
         # 1. データの準備
         current_time = df_base.index[idx_base]
@@ -21,11 +21,21 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
         
         if not plot_df.empty and formation_mode:
             last_idx = plot_df.index[-1]
-            plot_df.at[last_idx, "Close"] = v_price
-            m1_segment = df_base.loc[last_idx:current_time]
-            plot_df.at[last_idx, "High"] = m1_segment["High"].max()
-            plot_df.at[last_idx, "Low"] = m1_segment["Low"].min()
-
+            
+            # 【新機能】Tickデータが届いている場合
+            if current_tick_price is not None:
+                plot_df.at[last_idx, "Close"] = current_tick_price
+                if tick_segment is not None:
+                    plot_df.at[last_idx, "High"] = tick_segment["Price"].max()
+                    plot_df.at[last_idx, "Low"] = tick_segment["Price"].min()
+            
+            # 【既存機能】これまでの1分足ベースの処理（Tickがない時はこっちが動く）
+            else:
+                plot_df.at[last_idx, "Close"] = v_price
+                # あなたが持っていた既存のロジック
+                m1_segment = df_base.loc[last_idx:current_time]
+                plot_df.at[last_idx, "High"] = m1_segment["High"].max()
+                plot_df.at[last_idx, "Low"] = m1_segment["Low"].min()
         # 2. 描画エリアの整理
         ax_main.clear()
         ax_info.clear()

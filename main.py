@@ -201,7 +201,8 @@ def on_key_press(e):
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
+    formation_mode, v_price, current_tick_price, tick_segment
+ # ← これを追加
 )
                 elif new_idx <= idx_base:
                     idx_base = max(WINDOW_SIZES["M1"], new_idx)
@@ -211,7 +212,8 @@ def on_key_press(e):
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
+    formation_mode, v_price, current_tick_price, tick_segment
+ # ← これを追加
 )
             except Exception as ex: print(f"Jump Error: {ex}")
     
@@ -310,7 +312,8 @@ def on_button_press(e):
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
+    formation_mode, v_price, current_tick_price, tick_segment
+ # ← これを追加
 )
         return # フィボナッチ操作時は他の処理（エントリー等）をスキップ
     # ボタンを押した瞬間の表示範囲を記憶（軸の変動を防止）
@@ -333,7 +336,8 @@ def on_button_press(e):
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
+    formation_mode, v_price, current_tick_price, tick_segment
+ # ← これを追加
 ); return
 
     # 新規ライン描画（HキーやShiftキー時）
@@ -412,7 +416,8 @@ def on_button_press(e):
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
+    formation_mode, v_price, current_tick_price, tick_segment
+ # ← これを追加
 )
 def on_button_release(e):
     global dragging, fixed_ylim
@@ -446,7 +451,8 @@ def execute_skip():
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
+    formation_mode, v_price, current_tick_price, tick_segment
+ # ← これを追加
 )
 
 
@@ -545,7 +551,7 @@ timer.add_callback(lambda: (idx_base < len(df_base)-1 and is_autoplay and (globa
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
+    formation_mode, v_price, current_tick_price, tick_segment
 ))))
 timer.start()
 
@@ -555,7 +561,8 @@ visualizer.redraw(
     is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
     retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
     fibo_mode, fibo_points, selected_obj,
-    formation_mode # ← これを追加
+    formation_mode, v_price, current_tick_price, tick_segment
+ # ← これを追加
 )
 
 
