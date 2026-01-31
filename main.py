@@ -482,27 +482,37 @@ def handle_timer():
     # --- Tick再生モードの場合 ---
     if formation_ticks is not None and tick_ptr < len(formation_ticks):
         tick_row = formation_ticks.iloc[tick_ptr]
-        current_p = tick_row["Price"]
-        current_t = tick_row["Datetime"]
+        
+        # 1. 価格の計算（BidとAskの中間値）
+        # BidとAskが存在することを確認して計算
+        current_p = (tick_row["Bid"] + tick_row["Ask"]) / 2
+        
+        # 2. 正しいラベル名（Timestamp）を使用
+        current_t = tick_row["Timestamp"]
 
         # 1分足の枠(idx_base)を跨いだかチェック
-        # 次の1分足の時刻になったら idx_base を進める
-        if current_t >= df_base.index[idx_base + 1]:
-            idx_base += 1
+        # 安全のため、範囲外エラーを防ぐチェックを追加
+        if idx_base + 1 < len(df_base):
+            if current_t >= df_base.index[idx_base + 1]:
+                idx_base += 1
 
-        # 今の1分間の中で、これまでに届いたTickの塊（ヒゲ計算用）
+        # 3. 今の1分間（idx_baseの開始時刻〜次の足の直前まで）のTickを抽出
+        # これにより「今のローソク足だけ」のヒゲを正確に計算できます
         past_ticks = formation_ticks.iloc[:tick_ptr + 1]
-        this_minute_ticks = past_ticks[past_ticks["Datetime"] >= df_base.index[idx_base]]
+        this_minute_ticks = past_ticks[past_ticks["Timestamp"] >= df_base.index[idx_base]]
+        
+        # visualizer側で "Price" 列を期待している場合のために、中間値を列として追加
+        # (visualizerの High/Low 計算をスムーズにするため)
+        this_minute_ticks = this_minute_ticks.copy()
+        this_minute_ticks["Price"] = (this_minute_ticks["Bid"] + this_minute_ticks["Ask"]) / 2
 
-        # 【ここが重要！】
-        # 1分足の場所(idx_base)はそのままに、
-        # 中身の価格(current_p)と、その1分間の動き(this_minute_ticks)を届ける
+        # 再描画
         visualizer.redraw(
-            ...,
+            # ... 他の引数は省略 ...
             idx_base=idx_base,
-            v_price=None,                   # 1分足の終値は無視
-            current_tick_price=current_p,    # 最新のTick価格を注ぐ
-            tick_segment=this_minute_ticks  # その1分間の全Tickを注ぐ（ヒゲ計算用）
+            v_price=None,                   
+            current_tick_price=current_p,    
+            tick_segment=this_minute_ticks  
         )
 
         tick_ptr += 1 # 次のTickへ進む
