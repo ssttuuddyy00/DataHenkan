@@ -130,11 +130,7 @@ def on_key_press(e):
 
         # 損切りチェックと再描画
         engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers)
-        visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-                         hlines_data, stop_lines_data, markers, history, balance, 
-                         is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                         retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-                         fibo_mode, fibo_points, selected_obj, formation_mode)
+        visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode,v_price, current_tick_price , tick_segment )
         return
 
     # --- 左移動 (戻る) ---
@@ -150,11 +146,7 @@ def on_key_press(e):
             target_row_idx = max(0, current_row_idx - (9 if "control" in pressed else 0))
             idx_base = df_base.index.searchsorted(full_df.index[target_row_idx])
 
-        visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-                         hlines_data, stop_lines_data, markers, history, balance, 
-                         is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                         retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-                         fibo_mode, fibo_points, selected_obj, formation_mode)
+        visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode,v_price, current_tick_price, tick_segment)
         return
  
 
