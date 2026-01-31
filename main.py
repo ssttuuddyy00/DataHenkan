@@ -116,9 +116,7 @@ def on_key_press(e):
             current_close = df_base.iloc[idx_base]["Close"]
             
             # 3. redrawを呼ぶ（v_priceに値を渡す！）
-            visualizer.redraw(
-                ..., # 他の引数
-                v_price=current_close,       # ★ここ！
+            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode, v_price=current_close,       # ★ここ！
                 current_tick_price=None,     # TickではないのでNone
                 tick_segment=None            # TickではないのでNone
             )
