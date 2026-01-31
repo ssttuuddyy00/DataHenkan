@@ -508,8 +508,7 @@ def handle_timer():
 
         # 再描画
         visualizer.redraw(
-            # ... 他の引数は省略 ...
-            idx_base=idx_base,
+            ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode,
             v_price=None,                   
             current_tick_price=current_p,    
             tick_segment=this_minute_ticks  
