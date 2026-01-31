@@ -21,7 +21,21 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
         
         if not plot_df.empty and formation_mode:
             last_idx = plot_df.index[-1]
-            
+            # --- 比較用デバッグ ---
+            # A. 1分足（df_base）が本来持っている確定値（あるいはその時点の値）
+            m1_high = df_base.loc[last_idx, "High"]
+            m1_low  = df_base.loc[last_idx, "Low"]
+            m1_range = m1_high - m1_low
+
+            # B. 今計算しようとしている Tick ベースの値
+            t_max = tick_segment["Price"].max() if tick_segment is not None else current_tick_price
+            t_min = tick_segment["Price"].min() if tick_segment is not None else current_tick_price
+            tick_range = t_max - t_min
+
+            print(f"--- 1min vs Tick Scale ---")
+            print(f"M1   High-Low: {m1_range:.5f} ({m1_high:.5f} - {m1_low:.5f})")
+            print(f"Tick High-Low: {tick_range:.5f} ({t_max:.5f} - {t_min:.5f})")
+            print(f"Price Diff (Tick-M1Close): {current_tick_price - df_base.loc[last_idx, 'Close']:.5f}")
             # 【新機能】Tickデータが届いている場合
             if current_tick_price is not None:
                 # 1. まずOpenが空（NaN）なら、現在の価格で埋める（エラー防止の最優先事項）
