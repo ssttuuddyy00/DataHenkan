@@ -56,9 +56,9 @@ def redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_d
             ax_main.set_xlim(-0.5, len(display_df) + 1.5) 
 
             # --- 水平線の描画 (ラベル付き) ---
-            for i, (val, color, style) in enumerate(hlines_data):
+            for i, (val, color, style, lw) in enumerate(hlines_data):
                 is_selected = (selected_obj and selected_obj[0]=='hline' and selected_obj[1]==i)
-                ax_main.axhline(val, color=color, linestyle=style, linewidth=2.5 if is_selected else 1.2, zorder=3)
+                ax_main.axhline(val, color=color, linestyle=style, linewidth=lw if is_selected else lw + 0.5, zorder=3)
                 # 右端に価格を表示
                 ax_main.text(len(display_df) + 0.2, val, f'{val:.5f}', 
                              va='center', fontsize=9, color=color, 

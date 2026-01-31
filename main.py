@@ -308,10 +308,10 @@ def on_button_press(e):
     curr_t, curr_p = df_base.index[idx_base], df_base.iloc[idx_base]["Close"]
     
     # 既存ラインの選択判定
-    if e.button == 1 and not any(k in pressed for k in ["b","v","c","h","shift"]):
+    if e.button == 1 and not any(k in pressed for k in ["b","v","c","h","i","shift"]):
         selected_obj = None
         yr = fixed_ylim[1] - fixed_ylim[0]
-        for i, (p, c, ls) in enumerate(hlines_data + stop_lines_data):
+        for i, (p, c, ls, lw) in enumerate(hlines_data + stop_lines_data):
             if abs(p - e.ydata) < yr * 0.03:
                 selected_obj = ('stop' if i >= len(hlines_data) else 'hline', 
                                 i if i < len(hlines_data) else i - len(hlines_data))
@@ -335,16 +335,17 @@ def on_button_press(e):
     # 左クリック(1)の時の処理
     if e.button == 1:
         # Hキーが押されている場合
+        # --- on_button_press 内の「新規ライン描画」セクションを修正 ---
+   
+        # Hキー（太い線）
         if "h" in pressed:
-            hlines_data.append([e.ydata, "blue", "-"])
-            print(f">> 水平線を追加: {e.ydata:.5f}")
-            # 強制描画
-            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
-                             hlines_data, stop_lines_data, markers, history, balance, 
-                             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
-                             retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-                             fibo_mode, fibo_points, selected_obj, formation_mode)
-            return # ラインを引いたら他の判定（エントリーなど）をさせない
+            hlines_data.append([e.ydata, "blue", "-", 1.5]) # 太さを 1.5 に設定
+            print(f">> 太い水平線を追加: {e.ydata:.5f}")
+            
+        # Lキー（細い線 - Low weight の L）
+        elif "i" in pressed:
+            hlines_data.append([e.ydata, "blue", "-", 0.5]) # 太さを 0.5 に設定
+            print(f">> 細い水平線を追加: {e.ydata:.5f}")
 
         # Shiftキー（Matplotlibでは 'shift'）が押されている場合
         elif "shift" in pressed:
