@@ -107,30 +107,28 @@ def on_key_press(e):
     # --- main.py / on_key_press 内 ---
     # --- 右移動 (進む) ---
     if e.key == "right":
-        if formation_mode:
-            # 1. 1分足のインデックスを進める（ここは今まで通り）
-            step = 1 if not "control" in pressed else 10
-            idx_base = min(len(df_base) - 1, idx_base + step)
+        # Tick形成モード中、かつデータがある場合
+        if formation_mode and tick_segment is not None:
+            if 'current_tick_idx' not in globals():
+                global current_tick_idx
+                current_tick_idx = 0
+                
+            # Tickのインデックスを1つ進める
+            current_tick_idx += 1
             
-            # 2. 進めた先の「1分足の終値」をバケツに入れる
-            current_close = df_base.iloc[idx_base]["Close"]
-            
-            # 3. redrawを呼ぶ（v_priceに値を渡す！）
-            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode, v_price=current_close,       # ★ここ！
-                current_tick_price=None,     # TickではないのでNone
-                tick_segment=None            # TickではないのでNone
-            )
+            if current_tick_idx < len(tick_segment):
+                # 現在のTick価格を更新（visualizerでこれを使う）
+                current_tick_price = tick_segment.iloc[current_tick_idx]["Bid"]
+                # 現在のTickの時刻に合わせて idx_base を同期（1分足の枠を維持するため）
+                tick_time = tick_segment.iloc[current_tick_idx]["Timestamp"]
+                idx_base = df_base.index.searchsorted(tick_time, side='right') - 1
+            else:
+                print(">> 読み込んだTickの末尾に到達しました")
+                # 必要ならここで idx_base += 1 して次の足へ
+        
         else:
-            # ジャンプモード: 現在の表示足の「次の行」へジャンプ
-            current_row_idx = full_df.index.searchsorted(current_dt, side='right')
-            target_row_idx = min(len(full_df) - 1, current_row_idx + (9 if "control" in pressed else 0))
-            idx_base = df_base.index.searchsorted(full_df.index[target_row_idx])
-
-        # 損切りチェックと再描画
-        engine.check_stop_loss(df_base, idx_base, trade, stop_lines_data, PIPS_UNIT, ONE_LOT_PIPS_VALUE, balance, history, markers)
-        visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode,v_price, current_tick_price , tick_segment )
-        return
-
+            # 通常の1分足ジャンプ（既存の処理）
+            idx_base = min(len(df_base) - 1, idx_base + 1)
     # --- 左移動 (戻る) ---
     elif e.key == "left":
         if formation_mode:
