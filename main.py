@@ -507,12 +507,6 @@ def handle_timer():
     # --- Tick再生モードの場合 ---
     if formation_ticks is not None and tick_ptr < len(formation_ticks):
         tick_row = formation_ticks.iloc[tick_ptr]
-        # TimestampをUTCからJST（UTC+9）に変換
-        # もしTimestamp列が文字列なら pd.to_datetime で変換してから加算
-        formation_ticks['Timestamp'] = pd.to_datetime(formation_ticks['Timestamp']) + pd.Timedelta(hours=9)
-        
-        print(f">> Tick時刻をJSTに変換しました（+9時間）")
-        print(f">> 補正後の最初のTick: {formation_ticks.iloc[0]['Timestamp']} Price: {formation_ticks.iloc[0]['Bid']}")
         # 1. 価格の計算（BidとAskの中間値）
         # BidとAskが存在することを確認して計算
         current_p = (tick_row["Bid"] + tick_row["Ask"]) / 2
