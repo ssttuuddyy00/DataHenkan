@@ -6,6 +6,8 @@ import data_manager  # data_manager.py を読み込む
 import engine        # engine.py を読み込む
 import visualizer    # visualizer.py を読み込む
 import pandas as pd # StartupSettings内でpd.Timestampを使うため必要
+import tkinter as tk
+
 
 
 # =========================
@@ -248,6 +250,9 @@ def on_key_press(e):
         selected_obj = None
   
     # --- main.py 内の on_key_press 部分 ---
+    # on_key_pressの中に追加
+    if e.key == "r":
+        show_tick_stats()
 
     # 1〜7の数字キー判定（月足〜M1）
     if e.key in ["1", "2", "3", "4", "5", "6", "7"]:
@@ -539,6 +544,84 @@ def handle_timer():
         )
 
         tick_ptr += 1 # 次のTickへ進む
+
+
+def show_tick_stats():
+    # 1. 入力用ウィンドウ（隠し）
+    root = tk.Tk()
+    root.withdraw()
+    
+    # N（過去）, M（未来）の入力を取得
+    n_input = simpledialog.askinteger("集計設定", "現在の足から何本【過去】に遡りますか？", initialvalue=5)
+    if n_input is None: return
+    m_input = simpledialog.askinteger("集計設定", "現在の足から何本【未来】を見ますか？", initialvalue=5)
+    if m_input is None: return
+
+    # 2. 対象範囲の時間を計算
+    start_time = df_base.index[idx_base] - pd.Timedelta(minutes=n_input)
+    end_time = df_base.index[idx_base] + pd.Timedelta(minutes=m_input + 1) # 足の終わりまで
+
+    # 3. 指定範囲のTickを一括ロード（効率化のため）
+    # load_tick_data関数がstart, endを受け取れる前提です
+    target_ticks = load_tick_data(start_time, end_time)
+
+    if target_ticks is None or target_ticks.empty:
+        messagebox.showwarning("通知", "該当範囲にTickデータがありませんでした。")
+        root.destroy()
+        return
+
+    # 4. 1分足ごとに集計
+    results = []
+    for i in range(-n_input, m_input + 1):
+        t_bin = df_base.index[idx_base] + pd.Timedelta(minutes=i)
+        t_next = t_bin + pd.Timedelta(minutes=1)
+        
+        # この1分間のTickを抽出
+        mask = (target_ticks['Timestamp'] >= t_bin) & (target_ticks['Timestamp'] < t_next)
+        minute_data = target_ticks.loc[mask]
+        
+        if not minute_data.empty:
+            total = len(minute_data)
+            # 価格が前回より上がった＝買い、下がった＝売り
+            # Bid（売値）が上がっている＝買い圧力が強いという解釈
+            diff = minute_data['Bid'].diff()
+            buy_count = (diff > 0).sum()
+            sell_count = (diff < 0).sum()
+            
+            # または Bid/Askがあるなら：
+            # Ask寄り（買い勢）/ Bid寄り（売り勢）をカウントする場合
+            # buy_count = (minute_data['Price'] >= mid).sum()
+            
+            mark = "★" if i == 0 else "  "
+            results.append(f"{mark}{t_bin.strftime('%H:%M')} | {total:>6} | {buy_count:>6} | {sell_count:>6}")
+        else:
+            results.append(f"  {t_bin.strftime('%H:%M')} | データ無し")
+
+    # 5. 結果表示
+    header = "時刻  | Tick数 | 買い勢 | 売り勢\n" + "-"*35
+    summary = "\n".join(results)
+    messagebox.showinfo("Tick統計結果", f"{header}\n{summary}")
+    
+    root.destroy()
+
+def load_tick_data(start_t, end_t):
+    """
+    指定された開始時刻から終了時刻までのTickデータをParquetから読み込む
+    """
+    try:
+        # すでに前処理済みのParquetファイルを読み込む
+        # filtersを使うことで、ファイル全体をメモリに載せずに高速抽出します
+        df = pd.read_parquet(
+            r"C:\Users\81803\OneDrive\ドキュメント\tick_data.parquet", 
+            filters=[
+                ('Timestamp', '>=', start_t),
+                ('Timestamp', '<', end_t)
+            ]
+        )
+        return df
+    except Exception as e:
+        print(f"Tickロードエラー: {e}")
+        return None
 
 def on_close(event):
     if history and messagebox.askyesno("保存", "CSVに記録しますか？"): 
