@@ -479,8 +479,8 @@ def load_ticks_for_formation(current_time):
     try:
         # Parquetからフィルタリングしてロード
         df = pd.read_parquet(
-            "tick_data.parquet", 
-            filters=[("Datetime", ">=", start_t), ("Datetime", "<=", end_t)]
+            r"C:\Users\81803\OneDrive\ドキュメント\tick_data.parquet", 
+            filters=[("Timestamp", ">=", start_t), ("Timestamp", "<=", end_t)]
         )
         return df
     except Exception as e:
