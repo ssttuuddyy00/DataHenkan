@@ -109,53 +109,64 @@ def on_key_press(e):
     # --- main.py / on_key_press 内 ---
     # --- 右移動 (進む) ---
     if e.key == "right":
-        # 1. Formationモード中、かつTickデータがある場合
-        if formation_mode and formation_ticks is not None:
-            global tick_ptr  # 今何番目のTickかを示すポインタ
+        # --- A. Formationモード (Tick単位の処理) ---
+        if formation_mode:
+            if current_view == "M1":
+                # データが存在するかチェック
+                if formation_ticks  is not None and tick_ptr < len(formation_ticks):
+                    global tick_ptr
+                    
+                    # 1. 現在のTickデータを抽出
+                    tick_row = formation_ticks.iloc[tick_ptr]
+                    current_p = (tick_row["Bid"] + tick_row["Ask"]) / 2
+                    current_t = tick_row["Timestamp"]
 
-            if tick_ptr < len(formation_ticks):
-                # 現在の行を取り出す
-                tick_row = formation_ticks.iloc[tick_ptr]
-                
-                # 価格（Bid/Askの中間）を計算
-                current_p = (tick_row["Bid"] + tick_row["Ask"]) / 2
-                current_t = tick_row["Timestamp"]
+                    # 2. 1分足のインデックス(idx_base)の同期
+                    if idx_base + 1 < len(df_base):
+                        if current_t >= df_base.index[idx_base + 1]:
+                            idx_base += 1
 
-                # 1分足の枠(idx_base)を跨いだかチェック
-                if idx_base + 1 < len(df_base):
-                    if current_t >= df_base.index[idx_base + 1]:
-                        idx_base += 1
+                    # 3. 描画用のセグメント作成
+                    past_ticks = formation_ticks.iloc[:tick_ptr + 1]
+                    this_minute_ticks = past_ticks[past_ticks["Timestamp"] >= df_base.index[idx_base]].copy()
+                    this_minute_ticks["Price"] = (this_minute_ticks["Bid"] + this_minute_ticks["Ask"]) / 2
 
-                # 今の1分間（idx_base開始〜現在まで）のTickを抽出（ヒゲ用）
-                past_ticks = formation_ticks.iloc[:tick_ptr + 1]
-                this_minute_ticks = past_ticks[past_ticks["Timestamp"] >= df_base.index[idx_base]].copy()
-                this_minute_ticks["Price"] = (this_minute_ticks["Bid"] + this_minute_ticks["Ask"]) / 2
-                # --- main.py / on_key_press の中、Tickを読み込んだ直後あたり ---
+                    # 4. 再描画
+                    visualizer.redraw(
+                        ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                        hlines_data, stop_lines_data, markers, history, balance, 
+                        is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                        retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, 
+                        ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, 
+                        formation_mode, v_price,
+                        current_tick_price=current_p,
+                        tick_segment=this_minute_ticks,
+                    )
 
-                print(f"--- 時刻同期チェック ---")
-                print(f"1分足の現在時刻: {df_base.index[idx_base]}")
-                if not formation_ticks.empty:
-                    print(f"Tickの開始時刻 : {formation_ticks.iloc[0]['Timestamp']}")
-                    print(f"Tickの現在時刻 : {current_t}")
-                    print(f"価格差: {abs(current_p - df_base.iloc[idx_base]['Close'])}")
-                print(f"----------------------")
-                # 再描画
-                visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode,
-                    v_price,
-                    current_tick_price=current_p,
-                    tick_segment=this_minute_ticks,
-                )
-
-                tick_ptr += 1  # 次に備えてポインタを進める
-                print(f">> Tick進捗: {tick_ptr}/{len(formation_ticks)} Price: {current_p:.5f}")
+                    tick_ptr += 1  # ポインタを進める
+                    print(f">> Tick進捗: {tick_ptr}/{len(formation_ticks)} Price: {current_p:.5f}")
+                    
+                else:
+                    # データが尽きた、またはデータがない場合の処理
+                    print(">> Formation終了。通常モードに戻ります。")
+                    formation_mode = False
+                    # 必要であればここで tick_ptr = 0 などのリセットを行う
             else:
-                print(">> 全てのTickを表示しました。通常モードに戻ります。")
-                formation_mode = False
+                # 形成モード: 1分足のインデックスを1つ進める
+                step = 1 if not "control" in pressed else 10
+                idx_base = min(len(df_base) - 1, idx_base + step)
 
-        # 2. 通常モードの場合
+        # --- B. 通常モード (1分足単位の処理) ---
         else:
             idx_base = min(len(df_base) - 1, idx_base + 1)
-            visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode,v_price, current_tick_price, tick_segment)
+            visualizer.redraw(
+                ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
+                hlines_data, stop_lines_data, markers, history, balance, 
+                is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
+                retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, 
+                ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, 
+                formation_mode, v_price, current_tick_price, tick_segment
+            )
     # --- 左移動 (戻る) ---
     elif e.key == "left":
         if formation_mode:
