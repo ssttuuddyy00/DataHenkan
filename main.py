@@ -80,7 +80,7 @@ class StartupSettings:
 # 5. イベント処理
 # =========================
 def on_key_press(e):
-    global idx_base, is_autoplay, current_view, fibo_mode, fibo_points, selected_obj, trade, balance, history, markers , formation_mode 
+    global formation_ticks, idx_base, is_autoplay, current_view, fibo_mode, fibo_points, selected_obj, trade, balance, history, markers , formation_mode 
     global pressed
     # デバッグ用：何のキーが押されたかコンソールに表示
     # print(f"Key Pressed: {e.key}") 
@@ -131,9 +131,9 @@ def on_key_press(e):
 
                 # 再描画
                 visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode,
+                    v_price,
                     current_tick_price=current_p,
                     tick_segment=this_minute_ticks,
-                    formation_mode=True
                 )
 
                 tick_ptr += 1  # 次に備えてポインタを進める
