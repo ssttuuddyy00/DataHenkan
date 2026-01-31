@@ -476,6 +476,37 @@ def load_ticks_for_formation(current_time):
         print(f"Tick読み込み失敗: {e}")
         return None
     
+# main.py の handle_timer (または timer_update) 内
+def handle_timer():
+    global idx_base, tick_ptr, formation_ticks
+
+    # --- Tick再生モードの場合 ---
+    if formation_ticks is not None and tick_ptr < len(formation_ticks):
+        tick_row = formation_ticks.iloc[tick_ptr]
+        current_p = tick_row["Price"]
+        current_t = tick_row["Datetime"]
+
+        # 1分足の枠(idx_base)を跨いだかチェック
+        # 次の1分足の時刻になったら idx_base を進める
+        if current_t >= df_base.index[idx_base + 1]:
+            idx_base += 1
+
+        # 今の1分間の中で、これまでに届いたTickの塊（ヒゲ計算用）
+        past_ticks = formation_ticks.iloc[:tick_ptr + 1]
+        this_minute_ticks = past_ticks[past_ticks["Datetime"] >= df_base.index[idx_base]]
+
+        # 【ここが重要！】
+        # 1分足の場所(idx_base)はそのままに、
+        # 中身の価格(current_p)と、その1分間の動き(this_minute_ticks)を届ける
+        visualizer.redraw(
+            ...,
+            idx_base=idx_base,
+            v_price=None,                   # 1分足の終値は無視
+            current_tick_price=current_p,    # 最新のTick価格を注ぐ
+            tick_segment=this_minute_ticks  # その1分間の全Tickを注ぐ（ヒゲ計算用）
+        )
+
+        tick_ptr += 1 # 次のTickへ進む
 
 def on_close(event):
     if history and messagebox.askyesno("保存", "CSVに記録しますか？"): 
