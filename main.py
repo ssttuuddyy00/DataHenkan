@@ -128,7 +128,15 @@ def on_key_press(e):
                 past_ticks = formation_ticks.iloc[:tick_ptr + 1]
                 this_minute_ticks = past_ticks[past_ticks["Timestamp"] >= df_base.index[idx_base]].copy()
                 this_minute_ticks["Price"] = (this_minute_ticks["Bid"] + this_minute_ticks["Ask"]) / 2
+                # --- main.py / on_key_press の中、Tickを読み込んだ直後あたり ---
 
+                print(f"--- 時刻同期チェック ---")
+                print(f"1分足の現在時刻: {df_base.index[idx_base]}")
+                if not formation_ticks.empty:
+                    print(f"Tickの開始時刻 : {formation_ticks.iloc[0]['Timestamp']}")
+                    print(f"Tickの現在時刻 : {current_t}")
+                    print(f"価格差: {abs(current_p - df_base.iloc[idx_base]['Close'])}")
+                print(f"----------------------")
                 # 再描画
                 visualizer.redraw(ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, hlines_data, stop_lines_data, markers, history, balance, is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, fibo_mode, fibo_points, selected_obj, formation_mode,
                     v_price,
