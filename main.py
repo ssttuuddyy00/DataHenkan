@@ -478,7 +478,7 @@ def load_ticks_for_formation(current_time):
 # main.py の handle_timer (または timer_update) 内
 def handle_timer():
     global idx_base, tick_ptr, formation_ticks
-
+    print(f"DEBUG: Timer running. Pointer: {tick_ptr}, Price: {current_p}")
     # --- Tick再生モードの場合 ---
     if formation_ticks is not None and tick_ptr < len(formation_ticks):
         tick_row = formation_ticks.iloc[tick_ptr]
