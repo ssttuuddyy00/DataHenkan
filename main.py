@@ -89,7 +89,8 @@ def on_key_press(e):
     pressed.add(e.key)
     step = 10 if "control" in pressed else 1
     # --- 1. 移動量の計算 ---
-    tf_steps = {"M1": 1, "M5": 5, "M15": 15, "H1": 60, "D1": 1440, "MN": 43200}
+# tf_steps の定義に H4 を追加
+    tf_steps = {"M1": 1, "M5": 5, "M15": 15, "H1": 60, "H4": 240, "D1": 1440, "MN": 43200}    
     base_step = tf_steps.get(current_view, 1)
     move_amount = base_step * (10 if "control" in pressed else 1)
 
@@ -209,43 +210,42 @@ def on_key_press(e):
         elif t == 'stop': stop_lines_data.pop(i)
         selected_obj = None
   
-    # 1〜6の数字キー判定を確実に
-    if e.key in ["1", "2", "3", "4", "5", "6"]:
-        # 1. ここで new_view を定義（これが漏れると NameError）
-        new_view = VIEW_MAP[e.key]
+    # --- main.py 内の on_key_press 部分 ---
+
+    # 1〜7の数字キー判定（月足〜M1）
+    if e.key in ["1", "2", "3", "4", "5", "6", "7"]:
+        new_view = config.VIEW_MAP[e.key]
         
-        # 2. スナップロジック（現在時刻をその時間足の起点に合わせる）
+        # スナップロジック（H4を追加）
         current_dt = df_base.index[idx_base]
         freq_map = {
-            "M1": "1min", "M5": "5min", "M15": "15min", 
-            "H1": "1H", "D1": "1D", "MN": "MS"
+            "MN": "MS", "D1": "1D", "H4": "4H", "H1": "1H", 
+            "M15": "15min", "M5": "5min", "M1": "1min"
         }
         
         if new_view in freq_map:
             if new_view == "MN":
                 snapped_dt = current_dt.replace(day=1, hour=0, minute=0, second=0)
             else:
+                # 4Hなどの特殊な丸め込みにも対応
                 snapped_dt = current_dt.floor(freq_map[new_view])
             
             new_idx = df_base.index.get_indexer([snapped_dt], method='pad')[0]
             if new_idx != -1:
-                idx_base = max(WINDOW_SIZES["M1"], new_idx)
+                idx_base = max(config.WINDOW_SIZES["M1"], new_idx)
 
-        # 3. ここで現在のビューを更新
         current_view = new_view
         print(f">> 表示切り替え: {current_view}")
-
-        # 4. 描画（ここでも formation_mode を忘れずに！）
+        
         visualizer.redraw(
             ax_main, ax_info, fig, DFS, df_base, idx_base, current_view, 
             hlines_data, stop_lines_data, markers, history, balance, 
             is_autoplay, lot_mode, fixed_lot_size, WINDOW_SIZES, 
             retracements, extensions, RISK_PER_TRADE, PIPS_UNIT, ONE_LOT_PIPS_VALUE, 
-            fibo_mode, fibo_points, selected_obj,
-            formation_mode
+            fibo_mode, fibo_points, selected_obj, formation_mode
         )
-        return  # ここで終わらせないと、下の共通のredrawでまた NameError が出る可能性があります
-
+        return
+    
 def on_motion(e):
     global dragging, selected_obj, fixed_ylim, hlines_data, stop_lines_data
     
